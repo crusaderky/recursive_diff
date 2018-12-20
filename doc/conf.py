@@ -22,7 +22,7 @@ allowed_failures = set()
 
 print("python exec:", sys.executable)
 print("sys.path:", sys.path)
-for name in ('numpy', 'numba', 'scipy', 'pandas', 'dask', 'xarray'):
+for name in ('numpy', 'pandas', 'dask', 'xarray'):
     try:
         module = importlib.import_module(name)
         fname = module.__file__.rstrip('__init__.py')
@@ -46,9 +46,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.extlinks',
     'sphinx.ext.mathjax',
-    'numpydoc',
-    'IPython.sphinxext.ipython_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 extlinks = {'issue': ('https://github.com/crusaderky/recursive_diff/issues/%s', 'GH'),
@@ -303,10 +300,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'dask': ('https://docs.dask.org/en/latest/', None),
-    'distributed': ('https://distributed.dask.org/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
-    'numba': ('https://numba.pydata.org/numba-doc/latest/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
     'xarray': ('https://xarray.pydata.org/en/stable/', None),
 }

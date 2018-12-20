@@ -7,10 +7,8 @@ Required dependencies
 ---------------------
 
 - Python 3.5 or later
-- `scipy <https://docs.scipy.org/doc/>`__
 - `xarray <http://xarray.pydata.org/>`__
 - `dask <http://dask.pydata.org>`__
-- `numba <http://numba.pydata.org>`__
 - C compiler (only if building from sources)
 
 Deployment

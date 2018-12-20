@@ -1,49 +1,33 @@
-recursive_diff: Advanced algorithms for xarray
-=============================================
-This module offers several extensions to `xarray <http://xarray.pydata.org/>`_,
-which could not be included into the main module because they fall into one or
-more of the following categories:
+recursive_diff: Compare two Python data structures
+==================================================
+JSON and YAML are two massively popular formats to represent nested data.
+A problem arises when you want to compare two large JSON data structures,
+because the `==` operator will tell you if the two structures differ somewhere,
+but won't tell you *where*. Additionally, if the structures contain
+floating-point numbers, it won't allow to set a tolerance: 1.00000000000001 is
+different from 1.0, which is majorly problematic as floating point arithmetics
+are naturally characterised by noise around the 15th decimal position (the
+size of the mantissa).
 
-- They're too experimental
-- They're too niche
-- They introduce major new dependencies (e.g.
-  `numba <http://numba.pydata.org/>`_ or a C compiler)
-- They would be better done by doing major rework on multiple packages, and
-  then one would need to wait for said changes to reach a stable release of
-  each package - *in the right order*.
+A second problem that data scientists are well accustomed to is comparing
+huge numpy-based data structures, such as :class:`pandas.DataFrame` objects
+or data loaded from HDF5 datastores.
+Again, it is needed to identify *where* differences are, and apply tolerance
+to the comparison
 
-The API of recursive_diff is unstable by definition, as features will be
-progressively migrated upwards towards xarray, dask, numpy, pandas, etc.
+This module offers the function :func:`~recursive_diff.recursive_diff`,
+which crawls through two arbitrarily large nested JSON-like structures and
+dumps out all the differences. Python-specific data types, such as
+:class:`set` and :class:`tuple`, are also supported.
+`numpy <http://www.numpy.org>`_, `pandas <https://pandas.pydata.org>`_, and
+`xarray <http://xarray.pydata.org>`_ are supported and optimized for speed.
 
-Features
---------
-:doc:`api/csv`
-    Multi-threaded CSV writer, much faster than
-    :meth:`pandas.DataFrame.to_csv`, with full support for
-    `dask <http://dask.org/>`_ and
-    `dask distributed <http://distributed.dask.org/>`_.
-:doc:`api/cumulatives`
-    Advanced cumulative sum/productory/mean functions
-:doc:`api/interpolate`
-    dask-optimized n-dimensional spline interpolation
-:doc:`api/numba_extras`
-    Additions to `numba <http://numba.pydata.org/>`_
-:doc:`api/recursive_diff`
-    Recursively compare nested Python objects, with numpy/pandas/xarray
-    support and tolerance for numerical comparisons
-:doc:`api/sort`
-    Advanced sort/take functions
-:doc:`api/stack`
-    Tools for stacking/unstacking dimensions
-:doc:`api/testing`
-    Tools for unit tests
+Another function, :func:`~recursive_diff.recursive_eq`, is designed to be used
+in unit tests.
 
-Command-line tools
-------------------
-
-:doc:`bin/ncdiff`
-    Compare two NetCDF files or recursively find all NetCDF files within two
-    paths and compare them
+Finally, the command-line tool :doc:`ncdiff` allows comparing two NetCDF files,
+or two directories full of NetCDF files, as long as they can be loaded with
+:func:`xarray.open_dataset`.
 
 Index
 -----
@@ -52,23 +36,14 @@ Index
 
    installing
    whats-new
-   api/csv
-   api/cumulatives
-   api/interpolate
-   api/numba_extras
-   api/recursive_diff
-   api/sort
-   api/stack
-   api/testing
-   bin/ncdiff
+   api
+   ncdiff
 
 
 Credits
 -------
-- :doc:`api/recursive_diff`, :func:`~recursive_diff.testing.recursive_eq`,
-  :func:`~recursive_diff.stack.proper_unstack` and :doc:`bin/ncdiff` were
-  originally developed by Legal & General and released to the open source
-  community in 2018.
+- recursive_diff, recursive_eq and ncdiff were originally developed by
+  Legal & General and released to the open source community in 2018.
 - All boilerplate is from
   `python_project_template <https://github.com/crusaderky/python_project_template>`_,
   which in turn is from `xarray <http://xarray.pydata.org/>`_.
