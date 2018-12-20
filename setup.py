@@ -2,8 +2,7 @@
 import os
 import re
 import warnings
-
-from setuptools import find_packages, setup, Extension
+from setuptools import find_packages, setup
 
 
 MAJOR = 1
