@@ -1,0 +1,10 @@
+name: test_env
+channels:
+  - anaconda
+dependencies:
+  - python=3.7
+  - coveralls
+  - dask
+  - pytest
+  - pytest-cov
+  - xarray

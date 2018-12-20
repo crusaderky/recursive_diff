@@ -1,0 +1,9 @@
+name: recursive_diff-docs
+channels:
+  - anaconda
+dependencies:
+  - python=3.6
+  - dask
+  - sphinx
+  - sphinx_rtd_theme
+  - xarray
