@@ -7,4 +7,5 @@ dependencies:
   - dask
   - pytest
   - pytest-cov
+  - scipy  # NetCDF engine
   - xarray

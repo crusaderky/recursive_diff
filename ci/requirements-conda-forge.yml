@@ -6,7 +6,8 @@ dependencies:
   - python=3.7.1=h0371630_3
   - coveralls
   - dask
-  - h5netcdf  # Only needed by test_ncdiff
+  - h5netcdf  # NetCDF engine
   - pytest
   - pytest-cov
+  - scipy  # NetCDF engine
   - xarray

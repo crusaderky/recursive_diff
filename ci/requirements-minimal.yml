@@ -10,3 +10,4 @@ dependencies:
   - pytest=3.6
   - pytest-cov
   - xarray=0.10.1
+  - scipy=1.0  # NetCDF engine
