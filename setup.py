@@ -33,7 +33,7 @@ CLASSIFIERS = [
 ]
 
 INSTALL_REQUIRES = [
-    'dask >= 0.19'
+    'dask >= 0.19',
     'numpy >= 1.13',
     'pandas >= 0.21',
     'xarray >= 0.10.1',
