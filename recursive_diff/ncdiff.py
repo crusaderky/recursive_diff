@@ -31,7 +31,7 @@ def argparser():
 
     parser.add_argument(
         '--engine', '-e',
-        help='NeCDF engine (may require additional modules',
+        help='NeCDF engine (may require additional modules)',
         choices=['netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio', 'cfgrib',
                  'pseudonetcdf'])
     parser.add_argument(
