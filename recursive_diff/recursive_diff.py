@@ -12,12 +12,28 @@ import xarray
 from .cast import cast
 
 
+def are_instances(lhs, rhs, cls):
+    """Return True if both lhs and rhs are instances of cls; False otherwise
+    """
+    return isinstance(lhs, cls) and isinstance(rhs, cls)
+
+
+def is_array(dtype):
+    return any(dtype.startswith(t)
+               for t in ('ndarray', 'DataArray', 'Series', 'DataFrame'))
+
+
+def is_array_like(dtype):
+    return dtype in {'int', 'float', 'complex', 'bool', 'str', 'list', 'tuple'}
+
+
 def recursive_diff(lhs, rhs, *, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
     """Compare two objects and yield all differences.
     The two objects must any of:
 
     - basic types (str, int, float, bool)
     - basic collections (list, tuple, dict, set, frozenset)
+    - numpy scalar types, e.g. :class:`numpy.float64`
     - :class:`numpy.ndarray`
     - :class:`pandas.Series`
     - :class:`pandas.DataFrame`
@@ -35,14 +51,14 @@ def recursive_diff(lhs, rhs, *, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
     - numpy arrays are compared elementwise and with tolerance,
       also testing the dtype
     - pandas and xarray objects are compared elementwise, with tolerance, and
-      without order, and do not support duplicate indexes
+      without order. Duplicate indices are not supported.
     - xarray dimensions and variables are compared without order
     - collections (list, tuple, dict, set, frozenset) are recursively
       descended into
     - generic/unknown objects are compared with ==
 
     Custom classes can be registered to benefit from the above behaviour;
-    see documentation in :func:`cast`.
+    see :func:`cast`.
 
     :param lhs:
         left-hand-side data structure
@@ -97,18 +113,6 @@ def _recursive_diff(lhs, rhs, *, rel_tol, abs_tol, brief_dims, path,
         if path_prefix != '':
             path_prefix += ': '
         return path_prefix + msg
-
-    def is_array(dtype):
-        return any(
-            dtype.startswith(t)
-            for t in ('ndarray', 'DataArray', 'Series', 'DataFrame'))
-
-    def is_array_like(dtype):
-        return dtype in {'int', 'float', 'complex', 'bool',
-                         'str', 'list', 'tuple'}
-
-    def are_instances(lhs, rhs, cls):
-        return isinstance(lhs, cls) and isinstance(rhs, cls)
 
     # Build string representation of the two variables *before* casting
     lhs_repr = _str_trunc(lhs)
