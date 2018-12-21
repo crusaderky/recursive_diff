@@ -8,8 +8,7 @@ Required dependencies
 
 - Python 3.5 or later
 - `xarray <http://xarray.pydata.org/>`__
-- `dask <http://dask.pydata.org>`__
-- For :doc:`ncdiff`: one or more NetCDF engine;
+- For :doc:`ncdiff`: one or more NetCDF engines;
   see :func:`xarray.open_dataset`
 
 Deployment
