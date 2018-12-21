@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray
-from recursive_diff import recursive_diff
-from recursive_diff import cast
+from recursive_diff import recursive_diff, cast
+from . import requires_dask
 
 
 class Rectangle:
@@ -688,3 +688,21 @@ def test_custom_classes():
     check(Circle(4), Square(4),
           'Cannot compare objects: Circle(4.000000), Square(4.000000)',
           'object type differs: Circle != Square')
+
+
+@requires_dask
+@pytest.mark.parametrize('chunk_lhs,chunk_rhs', [
+    (None, None),
+    (None, -1),
+    (None, 2),
+    (((1, 2), ), ((2, 1), )),
+])
+def test_dask(chunk_lhs, chunk_rhs):
+    lhs = xarray.DataArray(['a', 'b', 'c'], dims=['x'])
+    rhs = xarray.DataArray(['a', 'b', 'd'], dims=['x'])
+    if chunk_lhs:
+        lhs = lhs.chunk(chunk_lhs)
+    if chunk_rhs:
+        rhs = rhs.chunk(chunk_rhs)
+
+    check(lhs, rhs, '[data][x=2]: c != d')

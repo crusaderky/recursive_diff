@@ -5,11 +5,11 @@ See also its most commonly used wrapper:
 """
 import math
 import re
-import dask
 import numpy
 import pandas
 import xarray
 from .cast import cast
+from . import dask_or_stub as dask
 
 
 def are_instances(lhs, rhs, cls):

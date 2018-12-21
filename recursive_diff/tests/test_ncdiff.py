@@ -2,7 +2,7 @@ import os
 import pytest
 import xarray
 from recursive_diff.ncdiff import main
-from . import requires_h5netcdf
+from . import requires_netcdf, requires_h5netcdf, requires_scipy
 
 
 a = xarray.Dataset(
@@ -32,6 +32,7 @@ def assert_stdout(capsys, expect):
     capsys.readouterr()
 
 
+@requires_netcdf
 @pytest.mark.parametrize('argv', [
     ['d1/a.nc', 'd1/b.nc'],
     ['-q', 'd1/a.nc', 'd1/b.nc'],
@@ -54,6 +55,7 @@ def test_identical(tmpdir, capsys, argv):
     assert_stdout(capsys, 'Found 0 differences\n')
 
 
+@requires_netcdf
 @pytest.mark.parametrize('argv,out', [
     ([],
      '[attrs]: Pair a3:4 is in RHS only\n'
@@ -102,6 +104,7 @@ def test_singlefile(tmpdir, capsys, argv, out):
     assert_stdout(capsys, out)
 
 
+@requires_netcdf
 @pytest.mark.parametrize('argv,out', [
     (['-r', 'lhs', 'lhs'], 'Found 0 differences\n'),
     (['-r', 'lhs', 'rhs', '-m', 'notexist'], 'Found 0 differences\n'),
@@ -144,6 +147,7 @@ def test_recursive(tmpdir, capsys, argv, out):
     assert_stdout(capsys, out)
 
 
+@requires_scipy
 @requires_h5netcdf
 def test_engine(tmpdir, capsys):
     """Test the --engine parameter. At the moment of writing, h5netcdf is the

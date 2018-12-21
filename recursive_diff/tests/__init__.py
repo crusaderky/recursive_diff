@@ -36,4 +36,11 @@ def _import_or_skip(modname, minversion=None):
     return has, func
 
 
+has_dask, requires_dask = _import_or_skip('dask')
 has_h5netcdf, requires_h5netcdf = _import_or_skip('h5netcdf')
+has_netcdf4, requires_netcdf4 = _import_or_skip('netcdf4')
+has_scipy, requires_scipy = _import_or_skip('scipy')
+
+has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
+requires_netcdf = pytest.mark.skipif(
+    not has_netcdf, reason="No NetCDF engine found")
