@@ -321,12 +321,12 @@ def _recursive_diff(lhs, rhs, *, rel_tol, abs_tol, brief_dims, path,
             else:
                 # At least one between lhs and rhs is non-numeric,
                 # e.g. bool or str
-                diffs = lhs.values != rhs.values
-
-                # Comparison between two non-scalar, incomparable types
-                # (like strings and numbers) will return True
-                if diffs is True:
-                    diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
+                # Move values into python (i.e non numpy) space for
+                # element-wise comparison.
+                diffs = numpy.array(
+                    [lve != rve for lve, rve in zip(lhs.values.tolist(),
+                                                    rhs.values.tolist())],
+                    dtype=bool).reshape(lhs.shape)
 
             if diffs.ndim > 1 and lhs.dims[-1] == '__stacked__':
                 # N>0 original dimensions, some (but not all) of which are in
