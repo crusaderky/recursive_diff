@@ -318,14 +318,26 @@ def _recursive_diff(lhs, rhs, *, rel_tol, abs_tol, brief_dims, path,
                 diffs = (lhs.astype('<M8[ns]').astype(int)
                          != rhs.astype('<M8[ns]').astype(int))
 
+            elif lhs.dtype.kind != rhs.dtype.kind:
+                # The cases of comparison between different numeric types
+                # should have been captured in the blocks above.  As far as
+                # numpy's concern, values between diffeent non-numeric types
+                # are not compatible and therefore not equal.
+                diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
+
             else:
-                # At least one between lhs and rhs is non-numeric,
-                # e.g. bool or str
-                # Move values into python (i.e non numpy) space for
-                # element-wise comparison.
+                # Now we are dealing with same (but non-numeric and
+                # non-datetime) dtype comparison.  Ideally we should use
+                # numpy.not_equal() function; however, currently (early 2019)
+                # it returns a NotImplemented object for non-numeric dtypes
+                # (and therefore does not performing the required element-wise
+                # comparsion).  The numpy.not_equal() function in such case
+                # would also promise it will be fix this problem in the future
+                # by giving a FutureWarning, which suppression requires further
+                # handling.  Let's perform the element-wise comparison directly
+                # in python to avoid these numpy function deficiencies.
                 diffs = numpy.array(
-                    [lve != rve for lve, rve in zip(lhs.values.tolist(),
-                                                    rhs.values.tolist())],
+                    [lve != rve for lve, rve in zip(lhs.values, rhs.values)],
                     dtype=bool).reshape(lhs.shape)
 
             if diffs.ndim > 1 and lhs.dims[-1] == '__stacked__':
