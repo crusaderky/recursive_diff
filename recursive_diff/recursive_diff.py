@@ -318,10 +318,14 @@ def _recursive_diff(lhs, rhs, *, rel_tol, abs_tol, brief_dims, path,
                 diffs = (lhs.astype('<M8[ns]').astype(int)
                          != rhs.astype('<M8[ns]').astype(int))
 
+            elif lhs.dtype.kind == 'b' and rhs.dtype.kind == 'b':
+
+                diffs = numpy.not_equal(lhs.values, rhs.values)
+
             elif lhs.dtype.kind != rhs.dtype.kind:
                 # The cases of comparison between different numeric types
                 # should have been captured in the blocks above.  As far as
-                # numpy's concern, values between diffeent non-numeric types
+                # numpy's concern, values between different non-numeric types
                 # are not compatible and therefore not equal.
                 diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
 
