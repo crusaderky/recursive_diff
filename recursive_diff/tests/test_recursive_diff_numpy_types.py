@@ -55,11 +55,12 @@ def test_numpy_mixed_datetime_types():
 
 def test_numpy_mixed_nat_types():
 
-    n1 = np.array(['NaT'])
-    n2 = np.array([np.datetime64('NaT')])
+    n1 = np.array(['2000-01-01 12:34:56', 'NaT'])
+    n2 = np.array([np.datetime64('2000-01-01 12:34:56'), np.datetime64('NaT')])
     check(n1, n2,
           'object type differs: ndarray<<U...> != ndarray<datetime64>',
-          '[data][0]: NaT != NaT')
+          '[data][0]: 2000-01-01 12:34:56 != 2000-01-01 12:34:56',
+          '[data][1]: NaT != NaT')
 
 
 def test_numpy_same_type_string():
