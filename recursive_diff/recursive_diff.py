@@ -228,11 +228,11 @@ def _recursive_diff(
         # pandas.Series and pandas.DataFrame, but also by numpy arrays
         # and xarrays without coords
         if (
-            lhs._start == rhs._start == 0
-            and lhs._step == rhs._step == 1
+            lhs.start == rhs.start == 0
+            and lhs.step == rhs.step == 1
             and lhs.name == rhs.name
         ):
-            delta = rhs._stop - lhs._stop
+            delta = rhs.stop - lhs.stop
             if delta < 0:
                 yield diff(f"LHS has {-delta} more elements than RHS")
             elif delta > 0:
