@@ -1,0 +1,4 @@
+- [ ] Closes #XXX
+- [ ] Added/updated unit tests
+- [ ] Updated documentation
+- [ ] Passes ``black -t py36 . && isort . && flake8 && mypy .``

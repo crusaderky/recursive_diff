@@ -4,5 +4,6 @@
 try:
     from dask import compute
 except ImportError:
+
     def compute(*args):
         return args
