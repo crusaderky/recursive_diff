@@ -30,6 +30,8 @@ jobs:
             requirements: minimal
           - python-version: '3.8'
             requirements: minimal
+          - python-version: '3.7'
+            requirements: no_optionals
 
     steps:
       - name: Checkout
