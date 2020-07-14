@@ -167,7 +167,7 @@ def main(argv: List[str] = None) -> int:
 
     # Don't init logging when running inside unit tests
     if argv is None:
-        logging.basicConfig(level=loglevel, format=LOGFORMAT)
+        logging.basicConfig(level=loglevel, format=LOGFORMAT)  # pragma: nocover
 
     # Load metadata of all NetCDF stores
     # Leave actual data on disk
@@ -202,4 +202,4 @@ def main(argv: List[str] = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main())  # pragma: nocover
