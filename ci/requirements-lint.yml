@@ -7,5 +7,4 @@ dependencies:
   - flake8
   - isort
   - mypy
-  - dask
   - xarray
