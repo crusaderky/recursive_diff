@@ -1,8 +1,20 @@
 """Copy-pasted from xarray-extras
 """
 from collections import OrderedDict
+from typing import Hashable, overload
 
 import pandas
+import xarray
+
+
+@overload
+def proper_unstack(array: xarray.DataArray, dim: Hashable) -> xarray.DataArray:
+    ...  # pragma: nocover
+
+
+@overload
+def proper_unstack(array: xarray.Dataset, dim: Hashable) -> xarray.Dataset:
+    ...  # pragma: nocover
 
 
 def proper_unstack(array, dim):
@@ -28,7 +40,7 @@ def proper_unstack(array, dim):
 
     levels = []
     labels = []
-    for levels_i, labels_i in zip(mindex.levels, mindex.labels):
+    for levels_i, labels_i in zip(mindex.levels, mindex.codes):
         level_map = OrderedDict()
 
         for label in labels_i:

@@ -5,6 +5,7 @@ See also its most commonly used wrapper:
 """
 import math
 import re
+from typing import Any, Collection, Dict, Hashable, Iterator, List, Union
 
 import numpy
 import pandas
@@ -14,29 +15,36 @@ from . import dask_or_stub as dask
 from .cast import cast
 
 
-def are_instances(lhs, rhs, cls):
+def are_instances(lhs, rhs, cls) -> bool:
     """Return True if both lhs and rhs are instances of cls; False otherwise
     """
     return isinstance(lhs, cls) and isinstance(rhs, cls)
 
 
-def is_array(dtype):
+def is_array(dtype: str) -> bool:
     return any(
         dtype.startswith(t) for t in ("ndarray", "DataArray", "Series", "DataFrame")
     )
 
 
-def is_array_like(dtype):
+def is_array_like(dtype: str) -> bool:
     return dtype in {"int", "float", "complex", "bool", "str", "list", "tuple"}
 
 
-def recursive_diff(lhs, rhs, *, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
+def recursive_diff(
+    lhs: Any,
+    rhs: Any,
+    *,
+    rel_tol: float = 1e-09,
+    abs_tol: float = 0.0,
+    brief_dims: Union[Collection[Hashable], str] = (),
+) -> Iterator[str]:
     """Compare two objects and yield all differences.
     The two objects must any of:
 
     - basic types (str, int, float, bool)
     - basic collections (list, tuple, dict, set, frozenset)
-    - numpy scalar types, e.g. :class:`numpy.float64`
+    - numpy scalar types
     - :class:`numpy.ndarray`
     - :class:`pandas.Series`
     - :class:`pandas.DataFrame`
@@ -76,7 +84,7 @@ def recursive_diff(lhs, rhs, *, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
     :param brief_dims:
         One of:
 
-        - sequence of strings representing xarray dimensions. If one or more
+        - collection of strings representing xarray dimensions. If one or more
           differences are found along one of these dimensions, only one message
           will be reported, stating the differences count.
         - "all", to produce one line only for every xarray variable that
@@ -100,8 +108,16 @@ def recursive_diff(lhs, rhs, *, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
 
 
 def _recursive_diff(
-    lhs, rhs, *, rel_tol, abs_tol, brief_dims, path, suppress_type_diffs, join
-):
+    lhs: Any,
+    rhs: Any,
+    *,
+    rel_tol: float,
+    abs_tol: float,
+    brief_dims: Union[Collection[Hashable], str],
+    path: List[object],
+    suppress_type_diffs: bool,
+    join: str,
+) -> Iterator[str]:
     """Recursive implementation of :func:`recursive_diff`
 
     :param list path:
@@ -118,10 +134,10 @@ def _recursive_diff(
     path list one element.
     """
 
-    def diff(msg, print_path=path):
+    def diff(msg: str, print_path: List[object] = path) -> str:
         """Format diff message, prepending the formatted path
         """
-        path_prefix = "".join("[%s]" % elem for elem in print_path)
+        path_prefix = "".join(f"[{elem}]" for elem in print_path)
         if path_prefix != "":
             path_prefix += ": "
         return path_prefix + msg
@@ -173,7 +189,7 @@ def _recursive_diff(
         rhs = cast(pandas.Index(rhs.values), brief_dims=brief_dims)
 
     if dtype_lhs != dtype_rhs and not suppress_type_diffs:
-        yield diff("object type differs: %s != %s" % (dtype_lhs, dtype_rhs))
+        yield diff(f"object type differs: {dtype_lhs} != {dtype_rhs}")
 
     # Continue even in case dtype doesn't match
     # This allows comparing e.g. a numpy array vs. a list or a tuple
@@ -203,30 +219,30 @@ def _recursive_diff(
 
     elif are_instances(lhs, rhs, set):
         for x in sorted(lhs - rhs, key=repr):
-            yield diff("%s is in LHS only" % _str_trunc(x))
+            yield diff(f"{_str_trunc(x)} is in LHS only")
         for x in sorted(rhs - lhs, key=repr):
-            yield diff("%s is in RHS only" % _str_trunc(x))
+            yield diff(f"{_str_trunc(x)} is in RHS only")
 
     elif are_instances(lhs, rhs, pandas.RangeIndex):
         # Pretty-print differences in size. This is used not only by
         # pandas.Series and pandas.DataFrame, but also by numpy arrays
         # and xarrays without coords
         if (
-            lhs._start == rhs._start == 0
-            and lhs._step == rhs._step == 1
+            lhs.start == rhs.start == 0
+            and lhs.step == rhs.step == 1
             and lhs.name == rhs.name
         ):
-            delta = rhs._stop - lhs._stop
+            delta = rhs.stop - lhs.stop
             if delta < 0:
-                yield diff("LHS has %d more elements than RHS" % -delta)
+                yield diff(f"LHS has {-delta} more elements than RHS")
             elif delta > 0:
-                yield diff("RHS has %d more elements than LHS" % delta)
+                yield diff(f"RHS has {delta} more elements than LHS")
         else:
             # General case
             # e.g. RangeIndex(start=1, stop=3, step=1, name='x')
             lhs, rhs = str(lhs), str(rhs)
             if lhs != rhs:
-                yield diff("%s != %s" % (lhs, rhs))
+                yield diff(f"{lhs} != {rhs}")
 
     elif are_instances(lhs, rhs, dict):
         for key in sorted(lhs.keys() - rhs.keys(), key=repr):
@@ -234,17 +250,17 @@ def _recursive_diff(
                 join = "outer"
             if join == "outer":
                 # Comparing an index
-                yield diff("Dimension %s is in LHS only" % key)
+                yield diff(f"Dimension {key} is in LHS only")
             else:
-                yield diff("Pair %s:%s is in LHS only" % (key, _str_trunc(lhs[key])))
+                yield diff(f"Pair {key}:{_str_trunc(lhs[key])} is in LHS only")
         for key in sorted(rhs.keys() - lhs.keys(), key=repr):
             if isinstance(rhs[key], pandas.Index):
                 join = "outer"
             if join == "outer":
                 # Comparing an index
-                yield diff("Dimension %s is in RHS only" % key)
+                yield diff(f"Dimension {key} is in RHS only")
             else:
-                yield diff("Pair %s:%s is in RHS only" % (key, _str_trunc(rhs[key])))
+                yield diff(f"Pair {key}:{_str_trunc(rhs[key])} is in RHS only")
         for key in sorted(rhs.keys() & lhs.keys(), key=repr):
             yield from _recursive_diff(
                 lhs[key],
@@ -259,13 +275,13 @@ def _recursive_diff(
 
     elif are_instances(lhs, rhs, bool):
         if lhs != rhs:
-            yield diff("%s != %s" % (lhs, rhs))
+            yield diff(f"{lhs} != {rhs}")
     elif are_instances(lhs, rhs, str):
         if lhs != rhs:
-            yield diff("%s != %s" % (lhs_repr, rhs_repr))
+            yield diff(f"{lhs_repr} != {rhs_repr}")
     elif are_instances(lhs, rhs, bytes):
         if lhs != rhs:
-            yield diff("%s != %s" % (lhs_repr, rhs_repr))
+            yield diff(f"{lhs_repr} != {rhs_repr}")
     elif are_instances(lhs, rhs, (int, float, complex)):
         if math.isnan(lhs) and math.isnan(rhs):
             pass
@@ -274,9 +290,7 @@ def _recursive_diff(
                 rel_delta = rhs / lhs - 1
             except ZeroDivisionError:
                 rel_delta = math.nan
-            yield diff(
-                "%s != %s (abs: %.1e, rel: %.1e)" % (lhs, rhs, rhs - lhs, rel_delta)
-            )
+            yield diff(f"{lhs} != {rhs} (abs: {rhs - lhs:.1e}, rel: {rel_delta:.1e})")
 
     elif are_instances(lhs, rhs, xarray.DataArray):
         # This block is executed for all data that was originally:
@@ -375,7 +389,7 @@ def _recursive_diff(
                 # Convert the diff count to plain dict with the original coords
                 diffs = _dataarray_to_dict(diffs)
                 for k, count in sorted(diffs.items()):
-                    yield diff("%d differences" % count, print_path=path + [k])
+                    yield diff(f"{count} differences", print_path=path + [k])
 
             elif "__stacked__" not in lhs.dims:
                 # N>0 original dimensions, all of which are in brief_dims
@@ -383,7 +397,7 @@ def _recursive_diff(
                 # Produce diffs count along brief_dims
                 count = diffs.astype(int).sum()
                 if count:
-                    yield diff("%d differences" % count)
+                    yield diff(f"{count} differences")
             else:
                 # N>0 original dimensions, none of which are in brief_dims
 
@@ -433,7 +447,7 @@ def _recursive_diff(
         # unknown objects
         try:
             if lhs != rhs:
-                yield diff("%s != %s" % (lhs_repr, rhs_repr))
+                yield diff(f"{lhs_repr} != {rhs_repr}")
         except Exception:
             # e.g. bool(xarray.DataArray([1, 2]) == {1: 2}) will raise:
             #   ValueError: The truth value of an array with more than one
@@ -442,10 +456,10 @@ def _recursive_diff(
             # above in this function.
             # Custom classes which implement a duck-typed __eq__ will
             # possibly fail with AttributeError, IndexError, etc. instead.
-            yield diff("Cannot compare objects: %s, %s" % (lhs_repr, rhs_repr))
+            yield diff(f"Cannot compare objects: {lhs_repr}, {rhs_repr}")
 
 
-def _str_trunc(x):
+def _str_trunc(x: object) -> str:
     """Helper function of :func:`recursive_diff`.
 
     Convert x to string. If it is longer than 80 characters, or spans
@@ -457,7 +471,7 @@ def _str_trunc(x):
     return x.splitlines()[0][:76] + " ..."
 
 
-def _get_stripped_dims(a):
+def _get_stripped_dims(a: xarray.DataArray) -> List[Hashable]:
     """Helper function of :func:`recursive_diff`.
 
     :param xarray.DataArray a:
@@ -467,12 +481,12 @@ def _get_stripped_dims(a):
     """
     if "__stacked__" in a.dims:
         res = set(a.coords["__stacked__"].to_index().names)
-        res |= set(a.dims) - set(["__stacked__"])
+        res |= set(a.dims) - {"__stacked__"}
         return sorted(res)
     return list(a.dims)
 
 
-def _dtype_str(obj):
+def _dtype_str(obj: Any) -> str:
     """Generate dtype information for object.
     For non-numpy objects, this is just the object class.
     Numpy-based objects also contain the data type (e.g. int32).
@@ -512,11 +526,11 @@ def _dtype_str(obj):
             np_dtype = np_dtype[:2] + "..."
         if np_dtype.startswith("datetime64"):
             np_dtype = "datetime64"
-        return "%s<%s>" % (dtype, np_dtype)
+        return f"{dtype}<{np_dtype}>"
     return dtype
 
 
-def _dataarray_to_dict(a):
+def _dataarray_to_dict(a: xarray.DataArray) -> Dict[str, Any]:
     """Helper function of :func:`recursive_diff`.
     Convert a DataArray prepared by :func:`_strip_dataarray` to a plain
     Python dict.
@@ -535,7 +549,7 @@ def _dataarray_to_dict(a):
     dims = a.coords["__stacked__"].to_index().names
     res = {}
     for idx, val in a.to_pandas().iteritems():
-        key = ", ".join("%s=%s" % (d, i) for d, i in zip(dims, idx))
+        key = ", ".join(f"{d}={i}" for d, i in zip(dims, idx))
         # Prettier output when there was no coord at the beginning,
         # e.g. with plain numpy arrays
         key = re.sub(r"dim_\d+=", "", key)

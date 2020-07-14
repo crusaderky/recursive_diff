@@ -1,15 +1,14 @@
+import pkg_resources
+
+from .cast import cast
+from .recursive_diff import recursive_diff
+from .recursive_eq import recursive_eq
+
 try:
-    from .version import version as __version__  # noqa: F401
-except ImportError:  # pragma: no cover
-    raise ImportError(
-        "recursive_diff not properly installed. If you are "
-        "running from the source directory, please instead "
-        "create a new virtual environment (using conda or "
-        "virtualenv) and then install it in-place by running: "
-        "pip install -e ."
-    )
+    __version__ = pkg_resources.get_distribution("recursive_diff").version
+except Exception:  # pragma: nocover
+    # Local copy, not installed with setuptools
+    __version__ = "999"
 
 
-from .cast import cast  # noqa: F401
-from .recursive_diff import recursive_diff  # noqa: F401
-from .recursive_eq import recursive_eq  # noqa: F401
+__all__ = ("__version__", "recursive_diff", "recursive_eq", "cast")

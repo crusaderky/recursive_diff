@@ -1,4 +1,4 @@
-*.py[cod]
+*.pyc
 __pycache__
 
 # C extensions
@@ -7,6 +7,7 @@ __pycache__
 # Packages
 *.egg
 *.egg-info
+.eggs
 dist
 build
 eggs
@@ -22,10 +23,12 @@ lib64
 pip-log.txt
 
 # Unit test / coverage reports
-.coverage
+.coverage*
+coverage.xml
 .tox
 nosetests.xml
 .cache
+.mypy_cache/
 .ropeproject/
 .tags*
 .testmon*
@@ -53,9 +56,7 @@ dask-worker-space/
 Icon*
 
 .ipynb_checkpoints
-recursive_diff/version.py
 
 doc/_build
-_build
-mydask.png
 Untitled.ipynb
+htmlcov/

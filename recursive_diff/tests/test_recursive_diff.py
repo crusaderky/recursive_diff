@@ -23,7 +23,7 @@ class Rectangle:
         return self.w == other.w and self.h == other.h
 
     def __repr__(self):
-        return "Rectangle(%f, %f)" % (self.w, self.h)
+        return f"Rectangle({self.w}, {self.h})"
 
 
 class Drawing:
@@ -56,7 +56,7 @@ class Circle:
         return self.radius == other.radius
 
     def __repr__(self):
-        return "Circle(%f)" % self.radius
+        return f"Circle({self.radius})"
 
 
 class Square:
@@ -70,7 +70,7 @@ class Square:
         return self.side == other.side
 
     def __repr__(self):
-        return "Square(%f)" % self.side
+        return f"Square({self.side})"
 
 
 def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
@@ -507,8 +507,8 @@ def test_pandas_multiindex():
     check(
         lhs,
         pd.Index([0, 1, 2]),
-        "Cannot compare objects: MultiIndex(levels=[['bar', 'baz'], "
-        "['one', 'two']], ..., Int64Index([0, 1, 2], dtype='int64')",
+        "Cannot compare objects: MultiIndex([('bar', 'one'), "
+        "..., Int64Index([0, 1, 2], dtype='int64')",
         "object type differs: MultiIndex != Int64Index",
     )
 
@@ -820,19 +820,19 @@ def test_custom_classes():
 
     # Unregistered classes can still be compared but without
     # tolerance or recursion
-    check(Circle(4), Circle(4.1), "Circle(4.000000) != Circle(4.100000)", abs_tol=0.5)
+    check(Circle(4), Circle(4.1), "Circle(4) != Circle(4.1)", abs_tol=0.5)
 
     check(
         Rectangle(4, 4),
         Square(4),
-        "Cannot compare objects: Rectangle(4.000000, 4.000000), Square(4.000000)",  # noqa: E501
+        "Cannot compare objects: Rectangle(4, 4), Square(4)",  # noqa: E501
         "object type differs: Rectangle != Square",
     )
 
     check(
         Circle(4),
         Square(4),
-        "Cannot compare objects: Circle(4.000000), Square(4.000000)",
+        "Cannot compare objects: Circle(4), Square(4)",
         "object type differs: Circle != Square",
     )
 

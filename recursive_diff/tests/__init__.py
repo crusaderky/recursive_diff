@@ -20,9 +20,9 @@ def _import_or_skip(modname, minversion=None):
             Tests decorated with it will only run if the module is available
             and >= minversion
     """
-    reason = "requires %s" % modname
+    reason = f"requires {modname}"
     if minversion:
-        reason += ">=%s" % minversion
+        reason += f">={minversion}"
 
     try:
         mod = importlib.import_module(modname)
