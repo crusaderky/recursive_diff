@@ -46,7 +46,7 @@ extlinks = {
 autosummary_generate = True
 
 # Add any paths that contain recursive_diffs here, relative to this directory.
-recursive_diffs_path = ["_recursive_diffs"]
+recursive_diffs_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"
@@ -59,7 +59,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "recursive_diff"
-copyright = "2020-%s, recursive_diff Developers" % datetime.datetime.now().year
+copyright = "2018-%s, recursive_diff Developers" % datetime.datetime.now().year
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -166,11 +166,11 @@ html_last_updated_fmt = today_fmt
 # typographically correct entities.
 # html_use_smartypants = True
 
-# Custom sidebar recursive_diffs, maps document names to recursive_diff names.
+# Custom sidebar templates, maps document names to template names.
 # html_sidebars = {}
 
-# Additional recursive_diffs that should be rendered to pages, maps page names to
-# recursive_diff names.
+# Additional templates that should be rendered to pages, maps page names to
+# template names.
 # html_additional_pages = {}
 
 # If false, no module index is generated.
