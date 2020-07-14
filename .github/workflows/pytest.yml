@@ -13,8 +13,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu, macos, windows]
-        python-version: ['3.6', '3.7', '3.8']
+        os:
+          - ubuntu
+          - macos
+          - windows
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+        requirements:
+          - latest
+          - minimal
+          - no_optionals
+        exclude:
+          - python-version: '3.7'
+            requirements: minimal
+          - python-version: '3.8'
+            requirements: minimal
 
     steps:
       - name: Checkout
@@ -26,7 +41,7 @@ jobs:
           miniconda-version: latest
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          environment-file: ci/requirements.yml
+          environment-file: ci/requirements-${{ matrix.requirements }}.yml
           activate-environment: recursive_diff
           auto-activate-base: false
 
