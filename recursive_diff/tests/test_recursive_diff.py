@@ -429,7 +429,7 @@ def test_pandas_dataframe():
     )
 
 
-def pandas_index():
+def test_pandas_index():
     # Regular index
     # Test that order is ignored
     # Use huge abs_tol and rel_tol to test that tolerance is ignored
