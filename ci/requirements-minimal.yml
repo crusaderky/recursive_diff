@@ -1,13 +1,13 @@
-name: test_env
+name: recursive_diff-minimal
 channels:
-  - anaconda
+  - conda-forge
+  - defaults
 dependencies:
-  - python=3.5
-  - coveralls
-  - dask=0.19.0
-  - numpy=1.13
-  - pandas=0.21.0
-  - pytest=3.6
-  - pytest-cov
-  - xarray=0.10.1
-  - scipy=1.0  # NetCDF engine
+  - pytest
+  - coverage
+
+  - dask=2.0
+  - numpy=1.15
+  - pandas=0.25
+  - xarray=0.12
+  - scipy=1.3  # NetCDF engine

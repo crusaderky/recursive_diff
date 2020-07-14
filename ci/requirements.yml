@@ -5,4 +5,7 @@ channels:
 dependencies:
   - pytest
   - coverage
+
+  - dask
+  - scipy  # NetCDF engine
   - xarray

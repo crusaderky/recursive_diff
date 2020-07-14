@@ -1,4 +1,5 @@
 from functools import singledispatch
+from typing import Collection, Hashable
 
 import numpy
 import pandas
@@ -8,7 +9,7 @@ from .proper_unstack import proper_unstack
 
 
 @singledispatch
-def cast(obj, brief_dims):
+def cast(obj, brief_dims: Collection[Hashable]):
     """Helper function of :func:`recursive_diff`.
 
     Cast objects into simpler object types:
@@ -32,8 +33,8 @@ def cast(obj, brief_dims):
 
     :param obj:
         complex object that must be simplified
-    :param tuple brief_dims:
-        sequence of xarray dimensions that must be compacted.
+    :param brief_dims:
+        xarray dimensions that must be compacted.
         See documentation on :func:`recursive_diff`.
     :returns:
         simpler object to compare
@@ -44,7 +45,7 @@ def cast(obj, brief_dims):
 
 
 @cast.register(numpy.integer)
-def _(obj, brief_dims):
+def cast_npint(obj: numpy.integer, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     integers (not to be confused with numpy arrays of integers)
     """
@@ -52,7 +53,7 @@ def _(obj, brief_dims):
 
 
 @cast.register(numpy.floating)
-def _(obj, brief_dims):
+def cast_npfloat(obj: numpy.floating, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     floats (not to be confused with numpy arrays of floats)
     """
@@ -60,21 +61,21 @@ def _(obj, brief_dims):
 
 
 @cast.register(numpy.ndarray)
-def _(obj, brief_dims):
+def cast_nparray(obj: numpy.ndarray, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`numpy.ndarray`.
 
     Map to a DataArray with dimensions dim_0, dim_1, ... and
     RangeIndex() as the coords.
     """
-    data = _strip_dataarray(xarray.DataArray(obj), brief_dims=brief_dims)
-    obj = {"dim_%d" % i: pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
+    data = _strip_dataarray(xarray.DataArray(obj), brief_dims)
+    obj = {f"dim_{i}": pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
     obj["data"] = data
     return obj
 
 
-@cast.register(pandas.Series)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(pandas.Series)
+def cast_series(obj: pandas.Series, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Series`.
 
@@ -82,15 +83,13 @@ def _(obj, brief_dims):
     """
     return {
         "name": obj.name,
-        "data": _strip_dataarray(
-            xarray.DataArray(obj, dims=["index"]), brief_dims=brief_dims
-        ),
+        "data": _strip_dataarray(xarray.DataArray(obj, dims=["index"]), brief_dims),
         "index": obj.index,
     }
 
 
-@cast.register(pandas.DataFrame)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(pandas.DataFrame)
+def cast_dataframe(obj: pandas.DataFrame, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.DataFrame`.
 
@@ -101,15 +100,15 @@ def _(obj, brief_dims):
     """
     return {
         "data": _strip_dataarray(
-            xarray.DataArray(obj, dims=["index", "column"]), brief_dims=brief_dims
+            xarray.DataArray(obj, dims=["index", "column"]), brief_dims
         ),
         "index": obj.index,
         "columns": obj.columns,
     }
 
 
-@cast.register(xarray.DataArray)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(xarray.DataArray)
+def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.DataArray`.
 
@@ -130,16 +129,16 @@ def _(obj, brief_dims):
         # compared with inner joinu
         "index": {k: obj.coords[k].to_index() for k in obj.dims},
         "coords": {
-            k: _strip_dataarray(v, brief_dims=brief_dims)
+            k: _strip_dataarray(v, brief_dims)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
-        "data": _strip_dataarray(obj, brief_dims=brief_dims),
+        "data": _strip_dataarray(obj, brief_dims),
     }
 
 
-@cast.register(xarray.Dataset)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(xarray.Dataset)
+def cast_dataset(obj: xarray.Dataset, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.Dataset`.
 
@@ -152,19 +151,18 @@ def _(obj, brief_dims):
         # See above on why indices are handled separately
         "index": {k: obj.coords[k].to_index() for k in obj.dims},
         "coords": {
-            k: _strip_dataarray(v, brief_dims=brief_dims)
+            k: _strip_dataarray(v, brief_dims)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
         "data_vars": {
-            k: _strip_dataarray(v, brief_dims=brief_dims)
-            for k, v in obj.data_vars.items()
+            k: _strip_dataarray(v, brief_dims) for k, v in obj.data_vars.items()
         },
     }
 
 
-@cast.register(pandas.MultiIndex)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(pandas.MultiIndex)
+def cast_multiindex(obj: pandas.MultiIndex, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.MultiIndex`.
 
@@ -174,8 +172,8 @@ def _(obj, brief_dims):
     return {"names": obj.names, "data": set(obj.tolist())}
 
 
-@cast.register(pandas.RangeIndex)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(pandas.RangeIndex)
+def cast_rangeindex(obj: pandas.RangeIndex, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.RangeIndex`.
 
@@ -187,8 +185,8 @@ def _(obj, brief_dims):
     return obj
 
 
-@cast.register(pandas.Index)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(pandas.Index)
+def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Index`.
 
@@ -200,11 +198,11 @@ def _(obj, brief_dims):
        :class:`pandas.MultiIndex` or :class:`pandas.RangeIndex`, as they have
        their own single dispatch variants.
     """
-    return _strip_dataarray(xarray.DataArray(obj), brief_dims=brief_dims)
+    return _strip_dataarray(xarray.DataArray(obj), brief_dims)
 
 
-@cast.register(frozenset)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(frozenset)
+def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`frozenset`.
 
@@ -213,8 +211,8 @@ def _(obj, brief_dims):
     return set(obj)
 
 
-@cast.register(tuple)  # noqa:F811
-def _(obj, brief_dims):
+@cast.register(tuple)
+def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]):
     """Single dispatch specialised variant of :func:`cast` for
     :class:`tuple`.
 
@@ -223,7 +221,9 @@ def _(obj, brief_dims):
     return list(obj)
 
 
-def _strip_dataarray(obj, brief_dims):
+def _strip_dataarray(
+    obj: xarray.DataArray, brief_dims: Collection[Hashable]
+) -> xarray.DataArray:
     """Helper function of :func:`recursive_diff`.
 
     Analyse a :class:`xarray.DataArray` and:
@@ -237,7 +237,7 @@ def _strip_dataarray(obj, brief_dims):
     :param obj:
         any xarray.DataArray
     :param brief_dims:
-        sequence of dims, or "all"
+        collection of dims, or "all"
     :returns:
         a stripped-down shallow copy of obj; otherwise None
     """

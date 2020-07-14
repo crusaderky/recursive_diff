@@ -1,12 +1,10 @@
 name: recursive_diff-docs
 channels:
-  # conda-forge and readthedocs are hosted by the same cloud provider, so
-  # using conda-forge instead of anaconda speeds the download up and prevents
-  # random timeouts
   - conda-forge
+  - defaults
 dependencies:
-  - python=3.6
+  - python=3.7
   - dask
-  - sphinx
+  - sphinx=2
   - sphinx_rtd_theme
   - xarray

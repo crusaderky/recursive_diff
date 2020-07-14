@@ -109,10 +109,10 @@ def test_singlefile(tmpdir, capsys, argv, out):
     b.attrs["a1"] = 3
     b.attrs["a3"] = 4
     b.x2[0] += 10
-    a.to_netcdf("%s/a.nc" % tmpdir)
-    b.to_netcdf("%s/b.nc" % tmpdir)
+    a.to_netcdf(f"{tmpdir}/a.nc")
+    b.to_netcdf(f"{tmpdir}/b.nc")
 
-    exit_code = main(argv + ["%s/a.nc" % tmpdir, "%s/b.nc" % tmpdir])
+    exit_code = main(argv + [f"{tmpdir}/a.nc", f"{tmpdir}/b.nc"])
     assert exit_code == 1
     assert_stdout(capsys, out)
 
@@ -149,9 +149,9 @@ def test_recursive(tmpdir, capsys, argv, out):
     a_lhs = a
     b_lhs = a_lhs.copy(deep=True)
     b_lhs.coords["x"] = [30, 40]
-    os.makedirs("%s/lhs/subdir" % tmpdir)
-    a_lhs.to_netcdf("%s/lhs/subdir/a.nc" % tmpdir)
-    b_lhs.to_netcdf("%s/lhs/b.nc" % tmpdir)
+    os.makedirs(f"{tmpdir}/lhs/subdir")
+    a_lhs.to_netcdf(f"{tmpdir}/lhs/subdir/a.nc")
+    b_lhs.to_netcdf(f"{tmpdir}/lhs/b.nc")
 
     a_rhs = a.copy(deep=True)
     a_rhs.d1[0] -= 10

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-#
-# recursive_diff documentation build configuration file, created by
+# documentation build configuration file, created by
 # sphinx-quickstart on Thu Feb  6 18:57:54 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -12,7 +10,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 import datetime
-import importlib
 import os
 import sys
 
@@ -22,15 +19,8 @@ allowed_failures = set()
 
 print("python exec:", sys.executable)
 print("sys.path:", sys.path)
-for name in ("numpy", "pandas", "dask", "xarray"):
-    try:
-        module = importlib.import_module(name)
-        fname = module.__file__.rstrip("__init__.py")
-        print("%s: %s, %s" % (name, module.__version__, fname))
-    except ImportError:
-        print("no %s" % name)
+print("recursive_diff version: ", recursive_diff.__version__)
 
-print("recursive_diff: %s, %s" % (recursive_diff.__version__, recursive_diff.__file__))
 
 # -- General configuration ------------------------------------------------
 
@@ -49,17 +39,14 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/crusaderky/recursive_diff/issues/%s", "GH"),
-    "pull": ("https://github.com/crusaderky/recursive_diff/pull/%s", "PR"),
+    "issue": ("https://github.com/crusaderky/recursive_diff/issues/%s", "#"),
+    "pull": ("https://github.com/crusaderky/recursive_diff/pull/%s", "#"),
 }
 
 autosummary_generate = True
 
-numpydoc_class_members_toctree = True
-numpydoc_show_class_members = False
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+# Add any paths that contain recursive_diffs here, relative to this directory.
+recursive_diffs_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"
@@ -79,7 +66,7 @@ copyright = "2018-%s, recursive_diff Developers" % datetime.datetime.now().year
 # built documents.
 #
 # The short X.Y version.
-version = recursive_diff.version.short_version
+version = recursive_diff.__version__.split("+")[0]
 # The full version, including alpha/beta/rc tags.
 release = recursive_diff.__version__
 
@@ -131,9 +118,7 @@ html_theme = "sphinx_rtd_theme"
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
-    "logo_only": True,
-}
+html_theme_options = {"logo_only": True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -147,7 +132,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = "_static/recursive_diff-logo.png"
+# html_logo = "_static/logo.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -239,7 +224,7 @@ latex_documents = [
         "recursive_diff Documentation",
         "recursive_diff Developers",
         "manual",
-    ),
+    )
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -293,9 +278,9 @@ texinfo_documents = [
         "recursive_diff Documentation",
         "recursive_diff Developers",
         "recursive_diff",
-        "Advanced / experimental algorithms for xarray",
+        "Recursively compare two Python data structures",
         "Miscellaneous",
-    ),
+    )
 ]
 
 # Documents to append as an appendix to all manuals.

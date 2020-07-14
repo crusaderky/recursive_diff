@@ -8,6 +8,7 @@ import glob
 import logging
 import os
 import sys
+from typing import Dict, List, Union
 
 import xarray
 
@@ -16,7 +17,7 @@ from .recursive_diff import recursive_diff
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
-def argparser():
+def argparser() -> argparse.ArgumentParser:
     """Return precompiled ArgumentParser
     """
     parser = argparse.ArgumentParser(
@@ -101,7 +102,7 @@ def argparser():
     return parser
 
 
-def open_netcdf(fname, engine=None):
+def open_netcdf(fname: str, engine: str = None) -> xarray.Dataset:
     """Open a single NetCDF dataset
     Read the metadata into RAM. Do not load the actual data.
 
@@ -114,16 +115,20 @@ def open_netcdf(fname, engine=None):
     """
     # At the moment of writing, h5netcdf is the only engine
     # supporting LZF compression
-    logging.info("Opening %s", fname)
+    logging.info(f"Opening {fname}")
     return xarray.open_dataset(fname, engine=engine, chunks={})
 
 
-def recursive_open_netcdf(path, match, engine=None):
+def recursive_open_netcdf(
+    path: str, match: str, engine: str = None
+) -> Dict[str, xarray.Dataset]:
     """Recursively find and open all NetCDF files that exist in any of
     the given paths.
 
     :param str path:
         Root directory to search into
+    :param str match:
+        Glob match relative to path
     :param str engine:
         NetCDF engine (see :func:`xarray.open_dataset`)
     :returns:
@@ -138,13 +143,13 @@ def recursive_open_netcdf(path, match, engine=None):
 
     # We don't invoke open_netcdf() directly inside the pushd context
     # to get a prettier logging message on the file being opened
-    logging.info("Opening %d NetCDF stores from %s", len(fnames), path)
+    logging.info(f"Opening {len(fnames)} NetCDF stores from {path}")
     return {
         fname: open_netcdf(os.path.join(path, fname), engine=engine) for fname in fnames
     }
 
 
-def main(argv=None):
+def main(argv: List[str] = None) -> int:
     """Parse command-line arguments, load all files, and invoke recursive_diff
 
     :returns:
@@ -162,10 +167,12 @@ def main(argv=None):
 
     # Don't init logging when running inside unit tests
     if argv is None:
-        logging.basicConfig(level=loglevel, format=LOGFORMAT)
+        logging.basicConfig(level=loglevel, format=LOGFORMAT)  # pragma: nocover
 
     # Load metadata of all NetCDF stores
     # Leave actual data on disk
+    lhs: Union[xarray.Dataset, Dict[str, xarray.Dataset]]
+    rhs: Union[xarray.Dataset, Dict[str, xarray.Dataset]]
     if args.recursive:
         lhs = recursive_open_netcdf(args.lhs, args.match, engine=args.engine)
         rhs = recursive_open_netcdf(args.rhs, args.match, engine=args.engine)
@@ -188,11 +195,11 @@ def main(argv=None):
         diff_count += 1
         print(diff)
 
-    print("Found %d differences" % diff_count)
+    print(f"Found {diff_count} differences")
     if diff_count:
         return 1
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main())  # pragma: nocover

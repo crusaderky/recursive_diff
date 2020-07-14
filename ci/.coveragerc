@@ -1,3 +1,0 @@
-[report]
-omit =
-    recursive_diff/tests/*

@@ -1,0 +1,10 @@
+name: recursive_diff-lint
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - black
+  - flake8
+  - isort
+  - mypy
+  - xarray
