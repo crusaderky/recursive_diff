@@ -181,8 +181,9 @@ def test_engine(tmpdir, capsys):
     a.to_netcdf("a.nc", engine="h5netcdf", encoding={"d1": {"compression": "lzf"}})
     b.to_netcdf("b.nc", engine="h5netcdf")
 
-    with pytest.raises(TypeError, message="a.nc is not a valid NetCDF 3 file"):
+    with pytest.raises(TypeError) as e:
         main(["a.nc", "b.nc"])
+    assert "a.nc is not a valid NetCDF 3 file" in str(e.value)
 
     # Differences in compression are not picked up
     exit_code = main(["--engine", "h5netcdf", "a.nc", "b.nc"])
