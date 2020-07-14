@@ -8,11 +8,12 @@ import glob
 import logging
 import os
 import sys
+
 import xarray
+
 from .recursive_diff import recursive_diff
 
-
-LOGFORMAT = '%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s'
+LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
 def argparser():
@@ -20,55 +21,82 @@ def argparser():
     """
     parser = argparse.ArgumentParser(
         description="Compare either two NetCDF files or all NetCDF files in "
-                    "two directories.",
+        "two directories.",
         epilog="Examples:\n\n"
-               "Compare two NetCDF files:\n"
-               "  ncdiff a.nc b.nc\n"
-               "Compare all NetCDF files with identical names in two "
-               "directories:\n"
-               "  ncdiff -r dir1 dir2\n",
-        formatter_class=argparse.RawTextHelpFormatter)
+        "Compare two NetCDF files:\n"
+        "  ncdiff a.nc b.nc\n"
+        "Compare all NetCDF files with identical names in two "
+        "directories:\n"
+        "  ncdiff -r dir1 dir2\n",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
 
     parser.add_argument(
-        '--engine', '-e',
-        help='NeCDF engine (may require additional modules)',
-        choices=['netcdf4', 'scipy', 'pydap', 'h5netcdf', 'pynio', 'cfgrib',
-                 'pseudonetcdf'])
-    parser.add_argument(
-        '--quiet', '-q', action='store_true',
-        help='Suppress logging')
+        "--engine",
+        "-e",
+        help="NeCDF engine (may require additional modules)",
+        choices=[
+            "netcdf4",
+            "scipy",
+            "pydap",
+            "h5netcdf",
+            "pynio",
+            "cfgrib",
+            "pseudonetcdf",
+        ],
+    )
+    parser.add_argument("--quiet", "-q", action="store_true", help="Suppress logging")
 
     parser.add_argument(
-        '--recursive', '-r', action='store_true',
-        help='Compare all NetCDF files with matching names in two directories')
+        "--recursive",
+        "-r",
+        action="store_true",
+        help="Compare all NetCDF files with matching names in two directories",
+    )
     parser.add_argument(
-        '--match', '-m', default='**/*.nc',
+        "--match",
+        "-m",
+        default="**/*.nc",
         help="Bash wildcard match for file names when using --recursive "
-             "(default: **/*.nc)")
+        "(default: **/*.nc)",
+    )
 
     parser.add_argument(
-        '--rtol', type=float, default=1e-9,
-        help="Relative comparison tolerance (default: 1e-9)")
+        "--rtol",
+        type=float,
+        default=1e-9,
+        help="Relative comparison tolerance (default: 1e-9)",
+    )
     parser.add_argument(
-        '--atol', type=float, default=0,
-        help="Absolute comparison tolerance (default: 0)")
+        "--atol",
+        type=float,
+        default=0,
+        help="Absolute comparison tolerance (default: 0)",
+    )
 
     brief = parser.add_mutually_exclusive_group()
     brief.add_argument(
-        '--brief_dims', nargs='+', default=(), metavar='DIM',
+        "--brief_dims",
+        nargs="+",
+        default=(),
+        metavar="DIM",
         help="Just count differences along one or more dimensions instead of "
-             "printing them out individually")
+        "printing them out individually",
+    )
     brief.add_argument(
-        '--brief', '-b', action='store_true',
+        "--brief",
+        "-b",
+        action="store_true",
         help="Just count differences for every variable instead of printing "
-             "them out individually")
+        "them out individually",
+    )
 
     parser.add_argument(
-        'lhs',
-        help="Left-hand-side NetCDF file or (if --recursive) directory")
+        "lhs", help="Left-hand-side NetCDF file or (if --recursive) directory"
+    )
     parser.add_argument(
-        'rhs',
-        help="Right-hand-side NetCDF file or (if --recursive) directory")
+        "rhs", help="Right-hand-side NetCDF file or (if --recursive) directory"
+    )
 
     return parser
 
@@ -111,8 +139,9 @@ def recursive_open_netcdf(path, match, engine=None):
     # We don't invoke open_netcdf() directly inside the pushd context
     # to get a prettier logging message on the file being opened
     logging.info("Opening %d NetCDF stores from %s", len(fnames), path)
-    return {fname: open_netcdf(os.path.join(path, fname), engine=engine)
-            for fname in fnames}
+    return {
+        fname: open_netcdf(os.path.join(path, fname), engine=engine) for fname in fnames
+    }
 
 
 def main(argv=None):
@@ -124,7 +153,7 @@ def main(argv=None):
     # Parse command-line arguments and init logging
     args = argparser().parse_args(argv)
     if args.brief:
-        args.brief_dims = 'all'
+        args.brief_dims = "all"
 
     if args.quiet:
         loglevel = logging.WARNING
@@ -151,9 +180,8 @@ def main(argv=None):
     # 4. free the RAM
     # 5. proceed to next pair
     diff_iter = recursive_diff(
-        lhs, rhs,
-        abs_tol=args.atol, rel_tol=args.rtol,
-        brief_dims=args.brief_dims)
+        lhs, rhs, abs_tol=args.atol, rel_tol=args.rtol, brief_dims=args.brief_dims
+    )
 
     diff_count = 0
     for diff in diff_iter:
@@ -166,5 +194,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

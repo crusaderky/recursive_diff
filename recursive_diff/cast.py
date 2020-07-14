@@ -1,7 +1,9 @@
 from functools import singledispatch
+
 import numpy
 import pandas
 import xarray
+
 from .proper_unstack import proper_unstack
 
 
@@ -66,11 +68,8 @@ def _(obj, brief_dims):
     RangeIndex() as the coords.
     """
     data = _strip_dataarray(xarray.DataArray(obj), brief_dims=brief_dims)
-    obj = {
-        'dim_%d' % i: pandas.RangeIndex(size)
-        for i, size in enumerate(obj.shape)
-    }
-    obj['data'] = data
+    obj = {"dim_%d" % i: pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
+    obj["data"] = data
     return obj
 
 
@@ -82,10 +81,11 @@ def _(obj, brief_dims):
     Map to a DataArray.
     """
     return {
-        'name': obj.name,
-        'data': _strip_dataarray(
-            xarray.DataArray(obj, dims=['index']), brief_dims=brief_dims),
-        'index': obj.index,
+        "name": obj.name,
+        "data": _strip_dataarray(
+            xarray.DataArray(obj, dims=["index"]), brief_dims=brief_dims
+        ),
+        "index": obj.index,
     }
 
 
@@ -100,11 +100,11 @@ def _(obj, brief_dims):
     they are cast to the closest common type by DataFrame.values.
     """
     return {
-        'data': _strip_dataarray(
-            xarray.DataArray(obj, dims=['index', 'column']),
-            brief_dims=brief_dims),
-        'index': obj.index,
-        'columns': obj.columns,
+        "data": _strip_dataarray(
+            xarray.DataArray(obj, dims=["index", "column"]), brief_dims=brief_dims
+        ),
+        "index": obj.index,
+        "columns": obj.columns,
     }
 
 
@@ -117,27 +117,24 @@ def _(obj, brief_dims):
     name, and attributes.
     """
     # Prevent infinite recursion - see _strip_dataarray()
-    if '__strip_dataarray__' in obj.attrs:
+    if "__strip_dataarray__" in obj.attrs:
         return obj
 
     # Strip out the non-index coordinates and attributes
     return {
-        'name': obj.name,
-        'attrs': obj.attrs,
+        "name": obj.name,
+        "attrs": obj.attrs,
         # Index is handled separately, and created as a default
         # RangeIndex(shape[i]) if it doesn't exist, as it is compared
         # with outer join, whereas non-index coords and data are
         # compared with inner joinu
-        'index': {
-            k: obj.coords[k].to_index()
-            for k in obj.dims
-        },
-        'coords': {
+        "index": {k: obj.coords[k].to_index() for k in obj.dims},
+        "coords": {
             k: _strip_dataarray(v, brief_dims=brief_dims)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
-        'data': _strip_dataarray(obj, brief_dims=brief_dims)
+        "data": _strip_dataarray(obj, brief_dims=brief_dims),
     }
 
 
@@ -149,23 +146,20 @@ def _(obj, brief_dims):
     Map to a dict of DataArrays.
     """
     return {
-        'attrs': obj.attrs,
+        "attrs": obj.attrs,
         # There may be coords, index or not, that are not
         # used in any data variable.
         # See above on why indices are handled separately
-        'index': {
-            k: obj.coords[k].to_index()
-            for k in obj.dims
-        },
-        'coords': {
+        "index": {k: obj.coords[k].to_index() for k in obj.dims},
+        "coords": {
             k: _strip_dataarray(v, brief_dims=brief_dims)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
-        'data_vars': {
+        "data_vars": {
             k: _strip_dataarray(v, brief_dims=brief_dims)
             for k, v in obj.data_vars.items()
-        }
+        },
     }
 
 
@@ -177,10 +171,7 @@ def _(obj, brief_dims):
     Map to a set of tuples. Note that this means that levels are
     positional. Using a set allows comparing the indices non-positionally.
     """
-    return {
-        'names': obj.names,
-        'data': set(obj.tolist())
-    }
+    return {"names": obj.names, "data": set(obj.tolist())}
 
 
 @cast.register(pandas.RangeIndex)  # noqa:F811
@@ -273,5 +264,5 @@ def _strip_dataarray(obj, brief_dims):
             res = res.stack(__stacked__=stack_dims)
 
     # Prevent infinite recursion - see cast(obj: xarray.DataArray)
-    res.attrs['__strip_dataarray__'] = True
+    res.attrs["__strip_dataarray__"] = True
     return res

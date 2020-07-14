@@ -1,6 +1,7 @@
 """Copy-pasted from xarray-extras
 """
 from collections import OrderedDict
+
 import pandas
 
 
