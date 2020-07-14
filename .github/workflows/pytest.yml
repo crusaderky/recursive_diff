@@ -13,10 +13,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu
-          - macos
-          - windows
         python-version:
           - '3.6'
           - '3.7'
@@ -25,6 +21,10 @@ jobs:
           - latest
           - minimal
           - no_optionals
+        os:
+          - ubuntu
+          - macos
+          - windows
         exclude:
           - python-version: '3.7'
             requirements: minimal
