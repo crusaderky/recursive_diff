@@ -362,15 +362,31 @@ def _recursive_diff(
                     "<M8[ns]"
                 ).astype(int)
 
-            else:
-                # At least one between lhs and rhs is non-numeric,
-                # e.g. bool or str
-                diffs = lhs.values != rhs.values
+            elif lhs.dtype.kind == 'b' and rhs.dtype.kind == 'b':
 
-                # Comparison between two non-scalar, incomparable types
-                # (like strings and numbers) will return True
-                if diffs is True:
-                    diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
+                diffs = numpy.not_equal(lhs.values, rhs.values)
+
+            elif lhs.dtype.kind != rhs.dtype.kind:
+                # The cases of comparison between different numeric types
+                # should have been captured in the blocks above.  As far as
+                # numpy's concern, values between different non-numeric types
+                # are not compatible and therefore not equal.
+                diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
+
+            else:
+                # Now we are dealing with same (but non-numeric and
+                # non-datetime) dtype comparison.  Ideally we should use
+                # numpy.not_equal() function; however, currently (early 2019)
+                # it returns a NotImplemented object for non-numeric dtypes
+                # (and therefore does not performing the required element-wise
+                # comparsion).  The numpy.not_equal() function in such case
+                # would also promise it will be fix this problem in the future
+                # by giving a FutureWarning, which suppression requires further
+                # handling.  Let's perform the element-wise comparison directly
+                # in python to avoid these numpy function deficiencies.
+                diffs = numpy.array(
+                    [lve != rve for lve, rve in zip(lhs.values, rhs.values)],
+                    dtype=bool).reshape(lhs.shape)
 
             if diffs.ndim > 1 and lhs.dims[-1] == "__stacked__":
                 # N>0 original dimensions, some (but not all) of which are in
