@@ -12,16 +12,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-      - name: Setup conda environment
-        uses: goanpeca/setup-miniconda@v1
         with:
-          miniconda-version: latest
-          auto-update-conda: true
-          python-version: 3.7
+          fetch-depth: 0
+
+      - name: Setup Conda Environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          condarc-file: ci/condarc
+          use-mamba: true
+          python-version: '3.8'
           environment-file: ci/requirements-docs.yml
           activate-environment: recursive_diff-docs
-          auto-activate-base: false
 
       - name: conda info
         shell: bash -l {0}
@@ -37,7 +40,7 @@ jobs:
 
       - name: Build docs
         shell: bash -l {0}
-        run: sphinx-build -W -n -j auto -b html -d build/doctrees doc build/html
+        run: sphinx-build -n -j auto -b html -d build/doctrees doc build/html
 
       - uses: actions/upload-artifact@v1
         with:

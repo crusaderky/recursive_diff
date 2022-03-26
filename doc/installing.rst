@@ -6,7 +6,7 @@ Installation
 Required dependencies
 ---------------------
 
-- Python 3.6 or later
+- Python 3.8 or later
 - `xarray <http://xarray.pydata.org/>`__
 - For :doc:`ncdiff`: one or more NetCDF engines;
   see :func:`xarray.open_dataset`
@@ -24,9 +24,7 @@ supported version of its dependencies:
   (`NEP-29 <https://numpy.org/neps/nep-0029-deprecation_policy.html>`_)
 - **numpy:** 24 months
   (`NEP-29 <https://numpy.org/neps/nep-0029-deprecation_policy.html>`_)
-- **pandas:** 12 months
-- **scipy:** 12 months
-- **all other libraries:** 6 months
+- **all other libraries:** 12 months
 
 The above should be interpreted as *the minor version (X.Y) initially published no more
 than N months ago*. Patch versions (x.y.Z) are not pinned, and only the latest available

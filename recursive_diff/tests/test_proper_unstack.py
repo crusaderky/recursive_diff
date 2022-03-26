@@ -40,8 +40,7 @@ def test_proper_unstack_order():
 
 
 def test_proper_unstack_dtype():
-    """Test that we don't accidentally end up with dtype=O for the coords
-    """
+    """Test that we don't accidentally end up with dtype=O for the coords"""
     a = xarray.DataArray(
         [[0, 1, 2, 3], [4, 5, 6, 7]],
         dims=["r", "c"],

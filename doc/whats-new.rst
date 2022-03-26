@@ -7,25 +7,26 @@ What's New
 
 v1.1.0 (Unreleased)
 -------------------
-- Added explicit support for Python 3.8
+- Added support for Python 3.8, 3.9, and 3.10
 - Type annotations
 - Support for pandas 1.0
 - This project now adheres to NEP-29; see :ref:`mindeps_policy`.
   Bumped up minimum versions for all dependencies:
 
   ========== ====== ======
-  Dependency v1.1.0 v1.2.0
+  Dependency v1.0.0 v1.1.0
   ========== ====== ======
-  python     3.5.0  3.6
+  python     3.5.0  3.8
   dask       0.19.0 2.0
-  numpy      1.13   1.15
+  numpy      1.13   1.16
   pandas     0.21   0.25
   xarray     0.10.1 0.12
   ========== ====== ======
 
 - Now using setuptools-scm for versioning
 - Migrated CI from Travis + AppVeyor + coveralls to GitHub actions + codecov.io
-- Added black, isort, flake8 and mypy to CI
+- Added static code checkers (black, isort, absolufy_imports, flake8, mypy) to CI,
+  wrapped by pre-commit
 
 
 .. _whats-new.1.0.0:

@@ -4,5 +4,7 @@ channels:
   - defaults
 dependencies:
   - pytest
+  - packaging
   - coverage
+
   - xarray

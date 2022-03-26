@@ -3,23 +3,23 @@
 
 See :doc:`bin/ncdiff`
 """
+from __future__ import annotations
+
 import argparse
 import glob
 import logging
 import os
 import sys
-from typing import Dict, List, Union
 
 import xarray
 
-from .recursive_diff import recursive_diff
+from recursive_diff.recursive_diff import recursive_diff
 
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
 def argparser() -> argparse.ArgumentParser:
-    """Return precompiled ArgumentParser
-    """
+    """Return precompiled ArgumentParser"""
     parser = argparse.ArgumentParser(
         description="Compare either two NetCDF files or all NetCDF files in "
         "two directories.",
@@ -102,7 +102,7 @@ def argparser() -> argparse.ArgumentParser:
     return parser
 
 
-def open_netcdf(fname: str, engine: str = None) -> xarray.Dataset:
+def open_netcdf(fname: str, engine: str | None = None) -> xarray.Dataset:
     """Open a single NetCDF dataset
     Read the metadata into RAM. Do not load the actual data.
 
@@ -121,7 +121,7 @@ def open_netcdf(fname: str, engine: str = None) -> xarray.Dataset:
 
 def recursive_open_netcdf(
     path: str, match: str, engine: str = None
-) -> Dict[str, xarray.Dataset]:
+) -> dict[str, xarray.Dataset]:
     """Recursively find and open all NetCDF files that exist in any of
     the given paths.
 
@@ -149,7 +149,7 @@ def recursive_open_netcdf(
     }
 
 
-def main(argv: List[str] = None) -> int:
+def main(argv: list[str] = None) -> int:
     """Parse command-line arguments, load all files, and invoke recursive_diff
 
     :returns:
@@ -171,8 +171,8 @@ def main(argv: List[str] = None) -> int:
 
     # Load metadata of all NetCDF stores
     # Leave actual data on disk
-    lhs: Union[xarray.Dataset, Dict[str, xarray.Dataset]]
-    rhs: Union[xarray.Dataset, Dict[str, xarray.Dataset]]
+    lhs: xarray.Dataset | dict[str, xarray.Dataset]
+    rhs: xarray.Dataset | dict[str, xarray.Dataset]
     if args.recursive:
         lhs = recursive_open_netcdf(args.lhs, args.match, engine=args.engine)
         rhs = recursive_open_netcdf(args.rhs, args.match, engine=args.engine)

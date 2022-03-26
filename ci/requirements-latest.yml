@@ -4,7 +4,9 @@ channels:
   - defaults
 dependencies:
   - pytest
+  - packaging
   - coverage
+
   - xarray
   - dask
   - h5netcdf  # NetCDF engine

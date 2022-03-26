@@ -7,13 +7,11 @@ import pytest
 import xarray
 
 from recursive_diff import cast, recursive_diff
-
-from . import requires_dask
+from recursive_diff.tests import requires_dask
 
 
 class Rectangle:
-    """Sample class to test custom comparisons
-    """
+    """Sample class to test custom comparisons"""
 
     def __init__(self, w, h):
         self.w = w
@@ -46,8 +44,7 @@ def _(obj, brief_dims):
 
 
 class Circle:
-    """A class which that supports == but is not registered
-    """
+    """A class which that supports == but is not registered"""
 
     def __init__(self, radius):
         self.radius = radius
@@ -60,8 +57,7 @@ class Circle:
 
 
 class Square:
-    """Another unregistered class
-    """
+    """Another unregistered class"""
 
     def __init__(self, side):
         self.side = side
@@ -153,10 +149,9 @@ def test_collections():
 
 
 def test_limit_str_length():
-    """Long and multi-line strings are truncated
-    """
+    """Long and multi-line strings are truncated"""
     check("a" * 100, "a" * 100)
-    check("a" * 100, "a" * 101, "%s ... != %s ..." % ("a" * 76, "a" * 76))
+    check("a" * 100, "a" * 101, "{} ... != {} ...".format("a" * 76, "a" * 76))
     check("a\nb", "a\nb")
     check("a\nb", "a\nc", "a ... != a ...")
 
@@ -171,8 +166,7 @@ def test_nan(nan):
 
 
 def test_float():
-    """Float comparison with tolerance
-    """
+    """Float comparison with tolerance"""
     # Test that floats are not accidentally rounded when printing
     check(
         123456.7890123456,

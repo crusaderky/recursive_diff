@@ -13,10 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - '3.6'
-          - '3.7'
-          - '3.8'
+        python-version: ['3.8', '3.9', '3.10']
         requirements:
           - latest
           - minimal
@@ -26,26 +23,27 @@ jobs:
           - macos
           - windows
         exclude:
-          - python-version: '3.7'
+          - python-version: '3.9'
             requirements: minimal
-          - python-version: '3.8'
+          - python-version: '3.10'
             requirements: minimal
-          - python-version: '3.7'
-            requirements: no_optionals
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Setup Conda Environment
-        uses: goanpeca/setup-miniconda@v1
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          miniconda-version: latest
-          auto-update-conda: true
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          condarc-file: ci/condarc
+          use-mamba: true
           python-version: ${{ matrix.python-version }}
           environment-file: ci/requirements-${{ matrix.requirements }}.yml
           activate-environment: recursive_diff
-          auto-activate-base: false
 
       - name: conda info
         shell: bash -l {0}

@@ -2,7 +2,7 @@
 """
 from typing import Any
 
-from .recursive_diff import recursive_diff
+from recursive_diff.recursive_diff import recursive_diff
 
 
 def recursive_eq(

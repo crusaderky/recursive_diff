@@ -3,21 +3,23 @@
 See also its most commonly used wrapper:
 :func:`~recursive_diff.testing.recursive_eq`
 """
+from __future__ import annotations
+
 import math
 import re
-from typing import Any, Collection, Dict, Hashable, Iterator, List, Union
+from collections.abc import Collection, Hashable, Iterator
+from typing import Any
 
 import numpy
 import pandas
 import xarray
 
-from . import dask_or_stub as dask
-from .cast import cast
+from recursive_diff import dask_or_stub as dask
+from recursive_diff.cast import cast
 
 
 def are_instances(lhs, rhs, cls) -> bool:
-    """Return True if both lhs and rhs are instances of cls; False otherwise
-    """
+    """Return True if both lhs and rhs are instances of cls; False otherwise"""
     return isinstance(lhs, cls) and isinstance(rhs, cls)
 
 
@@ -37,7 +39,7 @@ def recursive_diff(
     *,
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
-    brief_dims: Union[Collection[Hashable], str] = (),
+    brief_dims: Collection[Hashable] | str = (),
 ) -> Iterator[str]:
     """Compare two objects and yield all differences.
     The two objects must any of:
@@ -113,8 +115,8 @@ def _recursive_diff(
     *,
     rel_tol: float,
     abs_tol: float,
-    brief_dims: Union[Collection[Hashable], str],
-    path: List[object],
+    brief_dims: Collection[Hashable] | str,
+    path: list[object],
     suppress_type_diffs: bool,
     join: str,
 ) -> Iterator[str]:
@@ -134,9 +136,8 @@ def _recursive_diff(
     path list one element.
     """
 
-    def diff(msg: str, print_path: List[object] = path) -> str:
-        """Format diff message, prepending the formatted path
-        """
+    def diff(msg: str, print_path: list[object] = path) -> str:
+        """Format diff message, prepending the formatted path"""
         path_prefix = "".join(f"[{elem}]" for elem in print_path)
         if path_prefix != "":
             path_prefix += ": "
@@ -471,7 +472,7 @@ def _str_trunc(x: object) -> str:
     return x.splitlines()[0][:76] + " ..."
 
 
-def _get_stripped_dims(a: xarray.DataArray) -> List[Hashable]:
+def _get_stripped_dims(a: xarray.DataArray) -> list[Hashable]:
     """Helper function of :func:`recursive_diff`.
 
     :param xarray.DataArray a:
@@ -530,7 +531,7 @@ def _dtype_str(obj: Any) -> str:
     return dtype
 
 
-def _dataarray_to_dict(a: xarray.DataArray) -> Dict[str, Any]:
+def _dataarray_to_dict(a: xarray.DataArray) -> dict[str, Any]:
     """Helper function of :func:`recursive_diff`.
     Convert a DataArray prepared by :func:`_strip_dataarray` to a plain
     Python dict.

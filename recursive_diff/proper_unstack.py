@@ -1,7 +1,10 @@
 """Copy-pasted from xarray-extras
 """
+from __future__ import annotations
+
 from collections import OrderedDict
-from typing import Hashable, overload
+from collections.abc import Hashable
+from typing import overload
 
 import pandas
 import xarray

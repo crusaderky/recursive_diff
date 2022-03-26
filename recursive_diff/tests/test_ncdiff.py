@@ -4,8 +4,7 @@ import pytest
 import xarray
 
 from recursive_diff.ncdiff import main
-
-from . import requires_h5netcdf, requires_netcdf, requires_scipy
+from recursive_diff.tests import requires_h5netcdf, requires_netcdf, requires_scipy
 
 a = xarray.Dataset(
     data_vars={
@@ -172,9 +171,7 @@ def test_recursive(tmpdir, capsys, argv, out):
 @requires_scipy
 @requires_h5netcdf
 def test_engine(tmpdir, capsys):
-    """Test the --engine parameter. At the moment of writing, h5netcdf is the
-    only one that supports LZF compression.
-    """
+    """Test the --engine parameter"""
     os.chdir(str(tmpdir))
     b = a.copy(deep=True)
     b.d1[0] += 10
@@ -182,11 +179,11 @@ def test_engine(tmpdir, capsys):
     b.to_netcdf("b.nc", engine="h5netcdf")
 
     with pytest.raises(TypeError) as e:
-        main(["a.nc", "b.nc"])
+        main(["--engine", "scipy", "a.nc", "b.nc"])
     assert "a.nc is not a valid NetCDF 3 file" in str(e.value)
 
     # Differences in compression are not picked up
-    exit_code = main(["--engine", "h5netcdf", "a.nc", "b.nc"])
+    exit_code = main(["a.nc", "b.nc"])
     assert exit_code == 1
     assert_stdout(
         capsys,
