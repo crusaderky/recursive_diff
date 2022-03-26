@@ -183,7 +183,7 @@ def test_engine(tmpdir, capsys):
     assert "a.nc is not a valid NetCDF 3 file" in str(e.value)
 
     # Differences in compression are not picked up
-    exit_code = main(["a.nc", "b.nc"])
+    exit_code = main(["--engine", "h5netcdf", "a.nc", "b.nc"])
     assert exit_code == 1
     assert_stdout(
         capsys,
