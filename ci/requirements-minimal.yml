@@ -4,10 +4,11 @@ channels:
   - defaults
 dependencies:
   - pytest
+  - packaging
   - coverage
 
   - dask=2.0
-  - numpy=1.15
+  - numpy=1.16
   - pandas=0.25
   - xarray=0.12
 

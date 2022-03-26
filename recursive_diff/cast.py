@@ -1,11 +1,13 @@
+from __future__ import annotations
+
+from collections.abc import Collection, Hashable
 from functools import singledispatch
-from typing import Collection, Hashable
 
 import numpy
 import pandas
 import xarray
 
-from .proper_unstack import proper_unstack
+from recursive_diff.proper_unstack import proper_unstack
 
 
 @singledispatch
@@ -69,9 +71,9 @@ def cast_nparray(obj: numpy.ndarray, brief_dims: Collection[Hashable]):
     RangeIndex() as the coords.
     """
     data = _strip_dataarray(xarray.DataArray(obj), brief_dims)
-    obj = {f"dim_{i}": pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
-    obj["data"] = data
-    return obj
+    out = {f"dim_{i}": pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
+    out["data"] = data
+    return out
 
 
 @cast.register(pandas.Series)
@@ -255,11 +257,11 @@ def _strip_dataarray(
             res = proper_unstack(res, dim)
 
     # Transpose to ignore dimensions order
-    res = res.transpose(*sorted(res.dims))
+    res = res.transpose(*sorted(res.dims, key=str))
 
     # Finally stack everything back together
     if brief_dims != "all":
-        stack_dims = sorted(set(res.dims) - set(brief_dims))
+        stack_dims = sorted(set(res.dims) - set(brief_dims), key=str)
         if stack_dims:
             res = res.stack(__stacked__=stack_dims)
 

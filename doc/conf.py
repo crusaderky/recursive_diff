@@ -9,18 +9,12 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+from __future__ import annotations
+
 import datetime
 import os
-import sys
 
 import recursive_diff
-
-allowed_failures = set()
-
-print("python exec:", sys.executable)
-print("sys.path:", sys.path)
-print("recursive_diff version: ", recursive_diff.__version__)
-
 
 # -- General configuration ------------------------------------------------
 
@@ -205,13 +199,13 @@ htmlhelp_basename = "recursive_diffdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements = {
+latex_elements: dict[str, str] = {
     # The paper size ('letterpaper' or 'a4paper').
-    #'papersize': 'letterpaper',
+    # 'papersize': 'letterpaper',
     # The font size ('10pt', '11pt' or '12pt').
-    #'pointsize': '10pt',
+    # 'pointsize': '10pt',
     # Additional stuff for the LaTeX preamble.
-    #'preamble': '',
+    # 'preamble': '',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
