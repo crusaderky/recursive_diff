@@ -5,7 +5,7 @@ What's New
 
 .. _whats-new.1.1.0:
 
-v1.1.0 (Unreleased)
+v1.1.0 (2022-03-26)
 -------------------
 - Added support for Python 3.8, 3.9, and 3.10
 - Type annotations
