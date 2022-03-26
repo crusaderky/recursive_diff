@@ -1,14 +1,15 @@
 recursive_diff: Compare two Python data structures
 **************************************************
-JSON and YAML are two massively popular formats used to represent nested data. A problem
-arises when you want to compare two large JSON data structures, because the `==`
-operator will tell you if the two structures differ somewhere*, but won't tell you
-*where*. Additionally, if the structures contain floating-point numbers, == won't allow
+JSON, YAML and msgpack are massively popular formats used to represent nested data. A
+problem arises when you want to compare two large JSON data structures, because the `==`
+operator will tell you if the two structures differ *somewhere*, but won't tell you
+where*. Additionally, if the structures contain floating-point numbers, == won't allow
 to set a tolerance: 1.00000000000001 is different from 1.0, which is majorly problematic
 as floating point arithmetics are naturally characterised by noise around the 15th
-decimal position (the size of the mantissa). Tests on floating point numbers are
-typically performed with :func:`math.isclose` or :func:`numpy.isclose`, which however
-are not usable if the numbers to be tested lie deep inside a nested structure.
+decimal position (the size of the double-precision mantissa). Tests on floating point
+numbers are typically performed with :func:`math.isclose` or :func:`numpy.isclose`,
+which however are not usable if the numbers to be tested lie deep inside a nested
+structure.
 
 A second problem that data scientists need to face routinely is comparing huge
 numpy-based data structures, such as :class:`pandas.DataFrame` objects or data loaded
