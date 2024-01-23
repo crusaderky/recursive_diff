@@ -5,9 +5,12 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray
+from packaging.version import Version
 
 from recursive_diff import cast, recursive_diff
 from recursive_diff.tests import requires_dask
+
+PANDAS_GE_200 = Version(pd.__version__).release >= (2, 0)
 
 
 class Rectangle:
@@ -70,8 +73,8 @@ class Square:
 
 
 def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
-    expect = set(expect)
-    actual = set(
+    expect = sorted(e for e in expect if e)
+    actual = sorted(
         recursive_diff(
             lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol, brief_dims=brief_dims
         )
@@ -433,7 +436,7 @@ def test_pandas_index():
         "3.0 is in LHS only",
         "3.000001 is in RHS only",
         "4.0 is in LHS only",
-        "object type differs: Int64Index != Float64Index",
+        "" if PANDAS_GE_200 else "object type differs: Int64Index != Float64Index",
         rel_tol=10,
         abs_tol=10,
     )
@@ -472,11 +475,12 @@ def test_pandas_rangeindex():
     )
 
     # RangeIndex vs regular index
+    int_index = "Index" if PANDAS_GE_200 else "Int64Index"
     check(
         pd.RangeIndex(4),
         pd.Index([0, 1, 2]),
         "3 is in LHS only",
-        "object type differs: RangeIndex != Int64Index",
+        f"object type differs: RangeIndex != {int_index}",
     )
 
 
@@ -498,12 +502,13 @@ def test_pandas_multiindex():
     )
 
     # MultiIndex vs. regular index
+    int_index = "Index" if PANDAS_GE_200 else "Int64Index"
     check(
         lhs,
         pd.Index([0, 1, 2]),
         "Cannot compare objects: MultiIndex([('bar', 'one'), "
-        "..., Int64Index([0, 1, 2], dtype='int64')",
-        "object type differs: MultiIndex != Int64Index",
+        f"..., {int_index}([0, 1, 2], dtype='int64')",
+        f"object type differs: MultiIndex != {int_index}",
     )
 
 
