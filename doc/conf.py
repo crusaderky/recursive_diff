@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # documentation build configuration file, created by
 # sphinx-quickstart on Thu Feb  6 18:57:54 2014.
 #
@@ -9,12 +11,16 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-from __future__ import annotations
-
 import datetime
 import os
+import sys
 
 import recursive_diff
+
+print("python exec:", sys.executable)
+print("sys.path:", sys.path)
+print("TEMPLATE version: ", recursive_diff.__version__)
+
 
 # -- General configuration ------------------------------------------------
 
@@ -39,8 +45,8 @@ extlinks = {
 
 autosummary_generate = True
 
-# Add any paths that contain recursive_diffs here, relative to this directory.
-recursive_diffs_path = ["_templates"]
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"

@@ -5,5 +5,5 @@ try:
     from dask import compute
 except ImportError:
 
-    def compute(*args):
+    def compute(*args: object) -> object:
         return args

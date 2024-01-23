@@ -2,7 +2,6 @@
 """
 from __future__ import annotations
 
-from collections import OrderedDict
 from collections.abc import Hashable
 from typing import overload
 
@@ -12,15 +11,17 @@ import xarray
 
 @overload
 def proper_unstack(array: xarray.DataArray, dim: Hashable) -> xarray.DataArray:
-    ...  # pragma: nocover
+    ...
 
 
 @overload
 def proper_unstack(array: xarray.Dataset, dim: Hashable) -> xarray.Dataset:
-    ...  # pragma: nocover
+    ...
 
 
-def proper_unstack(array, dim):
+def proper_unstack(
+    array: xarray.DataArray | xarray.Dataset, dim: Hashable
+) -> xarray.DataArray | xarray.Dataset:
     """Work around an issue in xarray that causes the data to be sorted
     alphabetically by label on unstack():
 
@@ -33,7 +34,7 @@ def proper_unstack(array, dim):
 
     :param array:
         xarray.DataArray or xarray.Dataset to unstack
-    :param str dim:
+    :param Hashable dim:
         Name of existing dimension to unstack
     :returns:
         xarray.DataArray / xarray.Dataset with unstacked dimension
@@ -44,7 +45,7 @@ def proper_unstack(array, dim):
     levels = []
     labels = []
     for levels_i, labels_i in zip(mindex.levels, mindex.codes):
-        level_map = OrderedDict()
+        level_map: dict[str, int] = {}
 
         for label in labels_i:
             if label not in level_map:
@@ -58,7 +59,7 @@ def proper_unstack(array, dim):
     array.coords[dim] = mindex
 
     # Invoke builtin unstack
-    array = array.unstack(dim)
+    array = array.unstack((dim,))
 
     # Convert numpy arrays of Python objects to numpy arrays of C floats, ints,
     # strings, etc.

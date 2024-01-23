@@ -120,7 +120,7 @@ def open_netcdf(fname: str, engine: str | None = None) -> xarray.Dataset:
 
 
 def recursive_open_netcdf(
-    path: str, match: str, engine: str = None
+    path: str, match: str, engine: str | None = None
 ) -> dict[str, xarray.Dataset]:
     """Recursively find and open all NetCDF files that exist in any of
     the given paths.
@@ -149,7 +149,7 @@ def recursive_open_netcdf(
     }
 
 
-def main(argv: list[str] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Parse command-line arguments, load all files, and invoke recursive_diff
 
     :returns:
