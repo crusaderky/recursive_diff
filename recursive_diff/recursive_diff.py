@@ -549,7 +549,7 @@ def _dataarray_to_dict(a: xarray.DataArray) -> dict[str, Any]:
     assert a.dims == ("__stacked__",)
     dims = a.coords["__stacked__"].to_index().names
     res = {}
-    for idx, val in a.to_pandas().iteritems():
+    for idx, val in a.to_pandas().items():
         key = ", ".join(f"{d}={i}" for d, i in zip(dims, idx))
         # Prettier output when there was no coord at the beginning,
         # e.g. with plain numpy arrays
