@@ -39,7 +39,7 @@ def recursive_diff(
     *,
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
-    brief_dims: Collection[Hashable] | str = (),
+    brief_dims: Collection[Hashable] | Literal["all"] = (),
 ) -> Iterator[str]:
     """Compare two objects and yield all differences.
     The two objects must any of:

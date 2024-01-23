@@ -11,12 +11,12 @@ import xarray
 
 @overload
 def proper_unstack(array: xarray.DataArray, dim: Hashable) -> xarray.DataArray:
-    ...  # pragma: nocover
+    ...
 
 
 @overload
 def proper_unstack(array: xarray.Dataset, dim: Hashable) -> xarray.Dataset:
-    ...  # pragma: nocover
+    ...
 
 
 def proper_unstack(

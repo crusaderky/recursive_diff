@@ -8,6 +8,7 @@ What's New
 v1.2.0 (unreleased)
 -------------------
 - Added support for Python 3.11 and 3.12
+- Added support for recent Pandas versions (tested up to 2.2)
 
 
 .. _whats-new.1.1.0:
