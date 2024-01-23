@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Collection, Hashable, Iterator
-from typing import Any
+from typing import Any, Literal
 
 import numpy
 import pandas
@@ -18,7 +18,7 @@ from recursive_diff import dask_or_stub as dask
 from recursive_diff.cast import cast
 
 
-def are_instances(lhs, rhs, cls) -> bool:
+def are_instances(lhs: object, rhs: object, cls: type | tuple[type, ...]) -> bool:
     """Return True if both lhs and rhs are instances of cls; False otherwise"""
     return isinstance(lhs, cls) and isinstance(rhs, cls)
 
@@ -118,7 +118,7 @@ def _recursive_diff(
     brief_dims: Collection[Hashable] | str,
     path: list[object],
     suppress_type_diffs: bool,
-    join: str,
+    join: Literal["inner", "outer"],
 ) -> Iterator[str]:
     """Recursive implementation of :func:`recursive_diff`
 
@@ -487,7 +487,7 @@ def _get_stripped_dims(a: xarray.DataArray) -> list[Hashable]:
     return list(a.dims)
 
 
-def _dtype_str(obj: Any) -> str:
+def _dtype_str(obj: object) -> str:
     """Generate dtype information for object.
     For non-numpy objects, this is just the object class.
     Numpy-based objects also contain the data type (e.g. int32).

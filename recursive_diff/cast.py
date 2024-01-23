@@ -11,7 +11,7 @@ from recursive_diff.proper_unstack import proper_unstack
 
 
 @singledispatch
-def cast(obj, brief_dims: Collection[Hashable]):
+def cast(obj: object, brief_dims: Collection[Hashable]) -> object:
     """Helper function of :func:`recursive_diff`.
 
     Cast objects into simpler object types:
@@ -47,7 +47,7 @@ def cast(obj, brief_dims: Collection[Hashable]):
 
 
 @cast.register(numpy.integer)
-def cast_npint(obj: numpy.integer, brief_dims: Collection[Hashable]):
+def cast_npint(obj: numpy.integer, brief_dims: Collection[Hashable]) -> int:
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     integers (not to be confused with numpy arrays of integers)
     """
@@ -55,7 +55,7 @@ def cast_npint(obj: numpy.integer, brief_dims: Collection[Hashable]):
 
 
 @cast.register(numpy.floating)
-def cast_npfloat(obj: numpy.floating, brief_dims: Collection[Hashable]):
+def cast_npfloat(obj: numpy.floating, brief_dims: Collection[Hashable]) -> float:
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     floats (not to be confused with numpy arrays of floats)
     """
@@ -63,7 +63,9 @@ def cast_npfloat(obj: numpy.floating, brief_dims: Collection[Hashable]):
 
 
 @cast.register(numpy.ndarray)
-def cast_nparray(obj: numpy.ndarray, brief_dims: Collection[Hashable]):
+def cast_nparray(
+    obj: numpy.ndarray, brief_dims: Collection[Hashable]
+) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`numpy.ndarray`.
 
@@ -77,7 +79,9 @@ def cast_nparray(obj: numpy.ndarray, brief_dims: Collection[Hashable]):
 
 
 @cast.register(pandas.Series)
-def cast_series(obj: pandas.Series, brief_dims: Collection[Hashable]):
+def cast_series(
+    obj: pandas.Series, brief_dims: Collection[Hashable]
+) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Series`.
 
@@ -91,7 +95,9 @@ def cast_series(obj: pandas.Series, brief_dims: Collection[Hashable]):
 
 
 @cast.register(pandas.DataFrame)
-def cast_dataframe(obj: pandas.DataFrame, brief_dims: Collection[Hashable]):
+def cast_dataframe(
+    obj: pandas.DataFrame, brief_dims: Collection[Hashable]
+) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.DataFrame`.
 
@@ -110,7 +116,7 @@ def cast_dataframe(obj: pandas.DataFrame, brief_dims: Collection[Hashable]):
 
 
 @cast.register(xarray.DataArray)
-def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]):
+def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]) -> object:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.DataArray`.
 
@@ -140,7 +146,9 @@ def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]):
 
 
 @cast.register(xarray.Dataset)
-def cast_dataset(obj: xarray.Dataset, brief_dims: Collection[Hashable]):
+def cast_dataset(
+    obj: xarray.Dataset, brief_dims: Collection[Hashable]
+) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.Dataset`.
 
@@ -164,7 +172,9 @@ def cast_dataset(obj: xarray.Dataset, brief_dims: Collection[Hashable]):
 
 
 @cast.register(pandas.MultiIndex)
-def cast_multiindex(obj: pandas.MultiIndex, brief_dims: Collection[Hashable]):
+def cast_multiindex(
+    obj: pandas.MultiIndex, brief_dims: Collection[Hashable]
+) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.MultiIndex`.
 
@@ -175,7 +185,9 @@ def cast_multiindex(obj: pandas.MultiIndex, brief_dims: Collection[Hashable]):
 
 
 @cast.register(pandas.RangeIndex)
-def cast_rangeindex(obj: pandas.RangeIndex, brief_dims: Collection[Hashable]):
+def cast_rangeindex(
+    obj: pandas.RangeIndex, brief_dims: Collection[Hashable]
+) -> pandas.RangeIndex:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.RangeIndex`.
 
@@ -188,7 +200,7 @@ def cast_rangeindex(obj: pandas.RangeIndex, brief_dims: Collection[Hashable]):
 
 
 @cast.register(pandas.Index)
-def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]):
+def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]) -> xarray.DataArray:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Index`.
 
@@ -204,7 +216,7 @@ def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]):
 
 
 @cast.register(frozenset)
-def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]):
+def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]) -> set:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`frozenset`.
 
@@ -214,7 +226,7 @@ def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]):
 
 
 @cast.register(tuple)
-def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]):
+def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]) -> list:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`tuple`.
 

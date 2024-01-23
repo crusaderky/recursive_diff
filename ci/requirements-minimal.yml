@@ -1,11 +1,10 @@
 name: recursive_diff
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - pytest
+  - pytest-cov
   - packaging
-  - coverage
 
   - dask=2.0
   - numpy=1.16
