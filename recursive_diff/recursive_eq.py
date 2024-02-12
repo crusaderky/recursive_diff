@@ -13,7 +13,7 @@ def recursive_eq(
     """
     diffs_iter = recursive_diff(lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol)
     i = -1
-    for i, diff in enumerate(diffs_iter):
+    for i, diff in enumerate(diffs_iter):  # noqa: B007
         print(diff)
     i += 1
     assert i == 0, f"{i} differences found"

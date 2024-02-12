@@ -111,7 +111,7 @@ def test_singlefile(tmpdir, capsys, argv, out):
     a.to_netcdf(f"{tmpdir}/a.nc")
     b.to_netcdf(f"{tmpdir}/b.nc")
 
-    exit_code = main(argv + [f"{tmpdir}/a.nc", f"{tmpdir}/b.nc"])
+    exit_code = main([*argv, f"{tmpdir}/a.nc", f"{tmpdir}/b.nc"])
     assert exit_code == 1
     assert_stdout(capsys, out)
 
@@ -137,7 +137,7 @@ def test_singlefile(tmpdir, capsys, argv, out):
         (
             ["-r", "lhs", "rhs", "-m", "**/a.nc"],
             "[" + os.path.join("subdir", "a.nc") + "][data_vars][d1][x=10]: 1 != -9 "
-            "(abs: -1.0e+01, rel: -1.0e+01)\n"  # noqa
+            "(abs: -1.0e+01, rel: -1.0e+01)\n"
             "Found 1 differences\n",
         ),
     ],

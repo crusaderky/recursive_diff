@@ -213,7 +213,7 @@ def _recursive_diff(
                 rel_tol=rel_tol,
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
-                path=path + [i],
+                path=[*path, i],
                 suppress_type_diffs=suppress_type_diffs,
                 join=join,
             )
@@ -269,7 +269,7 @@ def _recursive_diff(
                 rel_tol=rel_tol,
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
-                path=path + [key],
+                path=[*path, key],
                 suppress_type_diffs=suppress_type_diffs,
                 join=join,
             )
@@ -277,7 +277,7 @@ def _recursive_diff(
     elif are_instances(lhs, rhs, bool):
         if lhs != rhs:
             yield diff(f"{lhs} != {rhs}")
-    elif are_instances(lhs, rhs, str):
+    elif are_instances(lhs, rhs, str):  # noqa: SIM114
         if lhs != rhs:
             yield diff(f"{lhs_repr} != {rhs_repr}")
     elif are_instances(lhs, rhs, bytes):
@@ -390,7 +390,7 @@ def _recursive_diff(
                 # Convert the diff count to plain dict with the original coords
                 diffs = _dataarray_to_dict(diffs)
                 for k, count in sorted(diffs.items()):
-                    yield diff(f"{count} differences", print_path=path + [k])
+                    yield diff(f"{count} differences", print_path=[*path, k])
 
             elif "__stacked__" not in lhs.dims:
                 # N>0 original dimensions, all of which are in brief_dims
