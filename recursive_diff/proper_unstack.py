@@ -1,27 +1,19 @@
-"""Copy-pasted from xarray-extras
+"""Utilities for stacking/unstacking dimensions
+
+Copy-pasted from xarray-extras
 """
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import overload
+from typing import TypeVar
 
 import pandas
 import xarray
 
-
-@overload
-def proper_unstack(array: xarray.DataArray, dim: Hashable) -> xarray.DataArray:
-    ...
+T = TypeVar("T", xarray.DataArray, xarray.Dataset)
 
 
-@overload
-def proper_unstack(array: xarray.Dataset, dim: Hashable) -> xarray.Dataset:
-    ...
-
-
-def proper_unstack(
-    array: xarray.DataArray | xarray.Dataset, dim: Hashable
-) -> xarray.DataArray | xarray.Dataset:
+def proper_unstack(array: T, dim: Hashable) -> T:
     """Work around an issue in xarray that causes the data to be sorted
     alphabetically by label on unstack():
 
@@ -37,24 +29,25 @@ def proper_unstack(
     :param Hashable dim:
         Name of existing dimension to unstack
     :returns:
-        xarray.DataArray / xarray.Dataset with unstacked dimension
+        xarray.DataArray or xarray.Dataset with unstacked dimension
     """
     # Regenerate Pandas multi-index to be ordered by first appearance
     mindex = array.coords[dim].to_pandas().index
 
     levels = []
-    labels = []
-    for levels_i, labels_i in zip(mindex.levels, mindex.codes):
-        level_map: dict[str, int] = {}
+    codes = []
 
-        for label in labels_i:
-            if label not in level_map:
-                level_map[label] = len(level_map)
+    for levels_i, codes_i in zip(mindex.levels, mindex.codes):
+        level_map: dict[Hashable, int] = {}
 
-        levels.append([levels_i[k] for k in level_map.keys()])
-        labels.append([level_map[k] for k in labels_i])
+        for code in codes_i:
+            if code not in level_map:
+                level_map[code] = len(level_map)
 
-    mindex = pandas.MultiIndex(levels, labels, names=mindex.names)
+        levels.append([levels_i[k] for k in level_map])
+        codes.append([level_map[k] for k in codes_i])
+
+    mindex = pandas.MultiIndex(levels, codes, names=mindex.names)
     array = array.copy()
     array.coords[dim] = mindex
 

@@ -354,6 +354,9 @@ def test_numpy_string_slice(x, y):
     check(b, c)
 
 
+@pytest.mark.filterwarnings(
+    "ignore:Converting non-nanosecond precision datetime:UserWarning"
+)
 def test_numpy_dates():
     a = pd.to_datetime(["2000-01-01", "2000-01-02", "2000-01-03", "NaT"]).values.astype(
         "<M8[D]"
@@ -455,17 +458,17 @@ def test_pandas_rangeindex():
     check(
         pd.RangeIndex(0, 4, 1),
         pd.RangeIndex(1, 4, 1),
-        "RangeIndex(start=0, stop=4, step=1) != " "RangeIndex(start=1, stop=4, step=1)",
+        "RangeIndex(start=0, stop=4, step=1) != RangeIndex(start=1, stop=4, step=1)",
     )
     check(
         pd.RangeIndex(0, 4, 2),
         pd.RangeIndex(0, 5, 2),
-        "RangeIndex(start=0, stop=4, step=2) != " "RangeIndex(start=0, stop=5, step=2)",
+        "RangeIndex(start=0, stop=4, step=2) != RangeIndex(start=0, stop=5, step=2)",
     )
     check(
         pd.RangeIndex(0, 4, 2),
         pd.RangeIndex(0, 4, 3),
-        "RangeIndex(start=0, stop=4, step=2) != " "RangeIndex(start=0, stop=4, step=3)",
+        "RangeIndex(start=0, stop=4, step=2) != RangeIndex(start=0, stop=4, step=3)",
     )
     check(
         pd.RangeIndex(4, name="foo"),
@@ -824,7 +827,7 @@ def test_custom_classes():
     check(
         Rectangle(4, 4),
         Square(4),
-        "Cannot compare objects: Rectangle(4, 4), Square(4)",  # noqa: E501
+        "Cannot compare objects: Rectangle(4, 4), Square(4)",
         "object type differs: Rectangle != Square",
     )
 
@@ -839,7 +842,7 @@ def test_custom_classes():
 @requires_dask
 @pytest.mark.parametrize(
     "chunk_lhs,chunk_rhs",
-    [(None, None), (None, -1), (None, 2), (((1, 2),), ((2, 1),))],
+    [(None, None), (None, -1), (None, 2), ({"x": (1, 2)}, {"x": (2, 1)})],
 )
 def test_dask(chunk_lhs, chunk_rhs):
     lhs = xarray.DataArray(["a", "b", "c"], dims=["x"])
