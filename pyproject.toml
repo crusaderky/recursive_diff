@@ -58,8 +58,6 @@ python_files = ["test_*.py"]
 testpaths = ["recursive_diff/tests"]
 filterwarnings = [
     "error",
-    # Raised internally by pandas
-    'ignore:datetime.datetime.utcfromtimestamp\(\) is deprecated:DeprecationWarning',
     # numpy <1.26 only
     'ignore:elementwise comparison failed:DeprecationWarning',
     'ignore:elementwise comparison failed:FutureWarning',

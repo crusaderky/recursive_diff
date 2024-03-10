@@ -534,13 +534,16 @@ def test_xarray():
     ds2.attrs["some2"] = 2
     ds2.attrs["other"] = "someval"
 
+    # Older versions of xarray don't have the 'Size 24B' bit
+    d1_str = str(ds1["d1"].stack({"__stacked__": ["x"]})).splitlines()[0].strip()
+
     check(
         ds1,
         ds2,
         "[attrs]: Pair other:someval is in RHS only",
         "[attrs][some2]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)",
         "[coords][nonindex][x=x2]: ni2 != ni4",
-        "[data_vars]: Pair d1:<xarray.DataArray 'd1' (__stacked__: 3)> ... is in LHS only",  # noqa: E501
+        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",
         "[data_vars][d2][x=x1, y=y1]: 4 != 10 (abs: 6.0e+00, rel: 1.5e+00)",
     )
 
@@ -549,7 +552,7 @@ def test_xarray():
         ds2,
         "[attrs]: Pair other:someval is in RHS only",
         "[coords][nonindex][x=x2]: ni2 != ni4",
-        "[data_vars]: Pair d1:<xarray.DataArray 'd1' (__stacked__: 3)> ... is in LHS only",  # noqa: E501
+        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",
         abs_tol=7,
     )
 

@@ -1,0 +1,19 @@
+name: recursive_diff
+channels:
+  - conda-forge
+dependencies:
+  - pytest
+  - pytest-cov
+  - packaging
+
+  - xarray
+  - dask
+  - h5netcdf  # NetCDF engine
+  - scipy  # NetCDF engine
+
+  - pip
+  - pip:
+      - git+https://github.com/dask/dask
+      - git+https://github.com/dask/distributed
+      - git+https://github.com/pydata/xarray
+      # numpy, pandas, pyarrow, and scipy are upgraded to nightly builds by pytest.yml
