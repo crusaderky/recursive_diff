@@ -543,7 +543,7 @@ def test_xarray():
         "[attrs]: Pair other:someval is in RHS only",
         "[attrs][some2]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)",
         "[coords][nonindex][x=x2]: ni2 != ni4",
-        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",  # noqa: E501
+        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",
         "[data_vars][d2][x=x1, y=y1]: 4 != 10 (abs: 6.0e+00, rel: 1.5e+00)",
     )
 
@@ -552,7 +552,7 @@ def test_xarray():
         ds2,
         "[attrs]: Pair other:someval is in RHS only",
         "[coords][nonindex][x=x2]: ni2 != ni4",
-        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",  # noqa: E501
+        f"[data_vars]: Pair d1:{d1_str} ... is in LHS only",
         abs_tol=7,
     )
 
