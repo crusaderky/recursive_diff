@@ -28,6 +28,10 @@ dynamic = ["version"]
 [project.urls]
 Homepage = "https://github.com/crusaderky/recursive_diff"
 
+[project.readme]
+text = "Recursively compare two Python data structures"
+content-type = "text/x-rst"
+
 [project.scripts]
 ncdiff = "recursive_diff.ncdiff:main"
 
