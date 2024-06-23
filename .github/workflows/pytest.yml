@@ -45,9 +45,10 @@ jobs:
           - os: ubuntu
             python-version: '3.8'
             requirements: minimal
-          - os: macos
-            python-version: '3.8'
-            requirements: minimal
+          # Old builds are not available on osx-arm64
+          # - os: macos
+          #   python-version: '3.8'
+          #   requirements: minimal
           - os: windows
             python-version: '3.8'
             requirements: minimal
