@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: ['*']
+  workflow_dispatch: # allows you to trigger manually
 
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
@@ -44,9 +45,10 @@ jobs:
           - os: ubuntu
             python-version: '3.8'
             requirements: minimal
-          - os: macos
-            python-version: '3.8'
-            requirements: minimal
+          # Old builds are not available on osx-arm64
+          # - os: macos
+          #   python-version: '3.8'
+          #   requirements: minimal
           - os: windows
             python-version: '3.8'
             requirements: minimal
