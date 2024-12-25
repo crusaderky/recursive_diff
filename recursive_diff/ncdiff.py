@@ -1,8 +1,8 @@
-#!/usr/bin/env python
 """Compare either two NetCDF files or all NetCDF files in two directories.
 
 See :doc:`bin/ncdiff`
 """
+
 from __future__ import annotations
 
 import argparse
@@ -115,7 +115,7 @@ def open_netcdf(fname: str, engine: str | None = None) -> xarray.Dataset:
     """
     # At the moment of writing, h5netcdf is the only engine
     # supporting LZF compression
-    logging.info(f"Opening {fname}")
+    logging.info("Opening %s", fname)
     return xarray.open_dataset(fname, engine=engine, chunks={})
 
 
@@ -143,7 +143,7 @@ def recursive_open_netcdf(
 
     # We don't invoke open_netcdf() directly inside the pushd context
     # to get a prettier logging message on the file being opened
-    logging.info(f"Opening {len(fnames)} NetCDF stores from {path}")
+    logging.info("Opening %d NetCDF stores from %s", len(fnames), path)
     return {
         fname: open_netcdf(os.path.join(path, fname), engine=engine) for fname in fnames
     }

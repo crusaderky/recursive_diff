@@ -3,6 +3,7 @@
 See also its most commonly used wrapper:
 :func:`~recursive_diff.testing.recursive_eq`
 """
+
 from __future__ import annotations
 
 import math
@@ -10,8 +11,8 @@ import re
 from collections.abc import Collection, Hashable, Iterator
 from typing import Any, Literal
 
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 import xarray
 
 from recursive_diff import dask_or_stub as dask
@@ -109,7 +110,7 @@ def recursive_diff(
     )
 
 
-def _recursive_diff(
+def _recursive_diff(  # noqa: PLR0915
     lhs: Any,
     rhs: Any,
     *,
@@ -125,7 +126,7 @@ def _recursive_diff(
     :param list path:
         list of nodes traversed so far, to be prepended to all error messages
     :param bool suppress_type_diffs:
-        if True, don't print out messages about differeces in type
+        if True, don't print out messages about differences in type
     :param str join:
         join type of numpy objects: 'inner' or 'outer'.
         Ignored for plain Python collections (set, dict, etc.) for which
@@ -149,7 +150,7 @@ def _recursive_diff(
 
     # Identify if the variables are indices that must go through outer join,
     # *before* casting. This will be propagated downwards into the recursion.
-    if join == "inner" and are_instances(lhs, rhs, pandas.Index):
+    if join == "inner" and are_instances(lhs, rhs, pd.Index):
         join = "outer"
 
     if (
@@ -179,15 +180,15 @@ def _recursive_diff(
     # When comparing an array vs. a plain python list or scalar, log an error
     # for the different dtype and then proceed to compare the contents
     if is_array(dtype_lhs) and is_array_like(dtype_rhs):
-        rhs = cast(numpy.array(rhs), brief_dims=brief_dims)
+        rhs = cast(np.array(rhs), brief_dims=brief_dims)
     elif is_array(dtype_rhs) and is_array_like(dtype_lhs):
-        lhs = cast(numpy.array(lhs), brief_dims=brief_dims)
+        lhs = cast(np.array(lhs), brief_dims=brief_dims)
 
     # Allow mismatched comparison of a RangeIndex vs. a regular index
-    if isinstance(lhs, pandas.RangeIndex) and not isinstance(rhs, pandas.RangeIndex):
-        lhs = cast(pandas.Index(lhs.values), brief_dims=brief_dims)
-    if isinstance(rhs, pandas.RangeIndex) and not isinstance(lhs, pandas.RangeIndex):
-        rhs = cast(pandas.Index(rhs.values), brief_dims=brief_dims)
+    if isinstance(lhs, pd.RangeIndex) and not isinstance(rhs, pd.RangeIndex):
+        lhs = cast(pd.Index(lhs.values), brief_dims=brief_dims)
+    if isinstance(rhs, pd.RangeIndex) and not isinstance(lhs, pd.RangeIndex):
+        rhs = cast(pd.Index(rhs.values), brief_dims=brief_dims)
 
     if dtype_lhs != dtype_rhs and not suppress_type_diffs:
         yield diff(f"object type differs: {dtype_lhs} != {dtype_rhs}")
@@ -198,13 +199,13 @@ def _recursive_diff(
     if are_instances(lhs, rhs, list):
         if len(lhs) > len(rhs):
             yield diff(
-                "LHS has %d more elements than RHS: %s"
-                % (len(lhs) - len(rhs), _str_trunc(lhs[len(rhs) :]))
+                f"LHS has {len(lhs) - len(rhs)} more elements than RHS: "
+                + _str_trunc(lhs[len(rhs) :])
             )
         elif len(lhs) < len(rhs):
             yield diff(
-                "RHS has %d more elements than LHS: %s"
-                % (len(rhs) - len(lhs), _str_trunc(rhs[len(lhs) :]))
+                f"RHS has {len(rhs) - len(lhs)} more elements than LHS: "
+                + _str_trunc(rhs[len(lhs) :])
             )
         for i, (lhs_i, rhs_i) in enumerate(zip(lhs, rhs)):
             yield from _recursive_diff(
@@ -224,9 +225,9 @@ def _recursive_diff(
         for x in sorted(rhs - lhs, key=repr):
             yield diff(f"{_str_trunc(x)} is in RHS only")
 
-    elif are_instances(lhs, rhs, pandas.RangeIndex):
+    elif are_instances(lhs, rhs, pd.RangeIndex):
         # Pretty-print differences in size. This is used not only by
-        # pandas.Series and pandas.DataFrame, but also by numpy arrays
+        # pd.Series and pd.DataFrame, but also by numpy arrays
         # and xarrays without coords
         if (
             lhs.start == rhs.start == 0
@@ -247,7 +248,7 @@ def _recursive_diff(
 
     elif are_instances(lhs, rhs, dict):
         for key in sorted(lhs.keys() - rhs.keys(), key=repr):
-            if isinstance(lhs[key], pandas.Index):
+            if isinstance(lhs[key], pd.Index):
                 join = "outer"
             if join == "outer":
                 # Comparing an index
@@ -255,7 +256,7 @@ def _recursive_diff(
             else:
                 yield diff(f"Pair {key}:{_str_trunc(lhs[key])} is in LHS only")
         for key in sorted(rhs.keys() - lhs.keys(), key=repr):
-            if isinstance(rhs[key], pandas.Index):
+            if isinstance(rhs[key], pd.Index):
                 join = "outer"
             if join == "outer":
                 # Comparing an index
@@ -346,17 +347,17 @@ def _recursive_diff(
                 # u = uint8,uint16, uint32, uint64
                 # f = float32, float64
                 # c = complex64, complex128
-                diffs = ~numpy.isclose(
+                diffs = ~np.isclose(
                     lhs.values, rhs.values, rtol=rel_tol, atol=abs_tol, equal_nan=True
                 )
 
             elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
                 # Both arrays are datetime64
-                # Unlike with numpy.isclose(equal_nan=True), there is no
+                # Unlike with np.isclose(equal_nan=True), there is no
                 # straightforward way to do a comparison of dates where
                 # NaT == NaT returns True.
                 # All datetime64's, including NaT, can be cast to milliseconds
-                # since 1970-01-01 (NaT is a special harcoded value).
+                # since 1970-01-01 (NaT is a special hardcoded value).
                 # We must first normalise the subtype, so that you can
                 # transparently compare e.g. <M8[ns] vs. <M8[D]
                 diffs = lhs.astype("<M8[ns]").astype(int) != rhs.astype(
@@ -371,7 +372,7 @@ def _recursive_diff(
                 # Comparison between two non-scalar, incomparable types
                 # (like strings and numbers) will return True
                 if diffs is True:
-                    diffs = numpy.full(lhs.shape, dtype=bool, fill_value=True)
+                    diffs = np.full(lhs.shape, dtype=bool, fill_value=True)
 
             if diffs.ndim > 1 and lhs.dims[-1] == "__stacked__":
                 # N>0 original dimensions, some (but not all) of which are in
@@ -414,8 +415,8 @@ def _recursive_diff(
                     # indices, aligned on themselves. All dict values are NaN
                     # by definition, so we can print a terser output by
                     # converting the dicts to sets.
-                    lhs = {k for k, v in lhs.items() if not pandas.isnull(v)}
-                    rhs = {k for k, v in rhs.items() if not pandas.isnull(v)}
+                    lhs = {k for k, v in lhs.items() if not pd.isnull(v)}
+                    rhs = {k for k, v in rhs.items() if not pd.isnull(v)}
 
                 # Finally dump out all the differences
                 yield from _recursive_diff(
@@ -507,16 +508,16 @@ def _dtype_str(obj: object) -> str:
         # Base types don't have __name__
         dtype = str(type(obj))
 
-    if isinstance(obj, numpy.integer):
+    if isinstance(obj, np.integer):
         dtype = "int"
-    elif isinstance(obj, numpy.floating):
+    elif isinstance(obj, np.floating):
         dtype = "float"
 
-    if isinstance(obj, (numpy.ndarray, pandas.Series, xarray.DataArray)):
+    if isinstance(obj, (np.ndarray, pd.Series, xarray.DataArray)):
         np_dtype = obj.dtype
-    elif isinstance(obj, pandas.DataFrame):
+    elif isinstance(obj, pd.DataFrame):
         # TODO: support for DataFrames with different dtypes on different
-        # columns. See also cast(obj: pandas.DataFrame)
+        # columns. See also cast(obj: pd.DataFrame)
         np_dtype = obj.values.dtype
     else:
         np_dtype = None

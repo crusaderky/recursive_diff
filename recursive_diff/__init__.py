@@ -15,4 +15,4 @@ for obj in (recursive_diff, recursive_eq, cast):
     obj.__module__ = "recursive_diff"
 del obj
 
-__all__ = ("__version__", "recursive_diff", "recursive_eq", "cast")
+__all__ = ("__version__", "cast", "recursive_diff", "recursive_eq")

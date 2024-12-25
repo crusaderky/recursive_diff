@@ -3,15 +3,15 @@ from __future__ import annotations
 from collections.abc import Collection, Hashable
 from functools import singledispatch
 
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 import xarray
 
 from recursive_diff.proper_unstack import proper_unstack
 
 
 @singledispatch
-def cast(obj: object, brief_dims: Collection[Hashable]) -> object:
+def cast(obj: object, brief_dims: Collection[Hashable]) -> object:  # noqa: ARG001
     """Helper function of :func:`recursive_diff`.
 
     Cast objects into simpler object types:
@@ -46,25 +46,25 @@ def cast(obj: object, brief_dims: Collection[Hashable]) -> object:
     return obj
 
 
-@cast.register(numpy.integer)
-def cast_npint(obj: numpy.integer, brief_dims: Collection[Hashable]) -> int:
+@cast.register(np.integer)
+def cast_npint(obj: np.integer, brief_dims: Collection[Hashable]) -> int:  # noqa: ARG001
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     integers (not to be confused with numpy arrays of integers)
     """
     return int(obj)
 
 
-@cast.register(numpy.floating)
-def cast_npfloat(obj: numpy.floating, brief_dims: Collection[Hashable]) -> float:
+@cast.register(np.floating)
+def cast_npfloat(obj: np.floating, brief_dims: Collection[Hashable]) -> float:  # noqa: ARG001
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     floats (not to be confused with numpy arrays of floats)
     """
     return float(obj)
 
 
-@cast.register(numpy.ndarray)
+@cast.register(np.ndarray)
 def cast_nparray(
-    obj: numpy.ndarray, brief_dims: Collection[Hashable]
+    obj: np.ndarray, brief_dims: Collection[Hashable]
 ) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`numpy.ndarray`.
@@ -73,15 +73,13 @@ def cast_nparray(
     RangeIndex() as the coords.
     """
     data = _strip_dataarray(xarray.DataArray(obj), brief_dims)
-    out = {f"dim_{i}": pandas.RangeIndex(size) for i, size in enumerate(obj.shape)}
+    out = {f"dim_{i}": pd.RangeIndex(size) for i, size in enumerate(obj.shape)}
     out["data"] = data
     return out
 
 
-@cast.register(pandas.Series)
-def cast_series(
-    obj: pandas.Series, brief_dims: Collection[Hashable]
-) -> dict[str, object]:
+@cast.register(pd.Series)
+def cast_series(obj: pd.Series, brief_dims: Collection[Hashable]) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Series`.
 
@@ -94,9 +92,9 @@ def cast_series(
     }
 
 
-@cast.register(pandas.DataFrame)
+@cast.register(pd.DataFrame)
 def cast_dataframe(
-    obj: pandas.DataFrame, brief_dims: Collection[Hashable]
+    obj: pd.DataFrame, brief_dims: Collection[Hashable]
 ) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.DataFrame`.
@@ -171,9 +169,10 @@ def cast_dataset(
     }
 
 
-@cast.register(pandas.MultiIndex)
+@cast.register(pd.MultiIndex)
 def cast_multiindex(
-    obj: pandas.MultiIndex, brief_dims: Collection[Hashable]
+    obj: pd.MultiIndex,
+    brief_dims: Collection[Hashable],  # noqa: ARG001
 ) -> dict[str, object]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.MultiIndex`.
@@ -184,23 +183,24 @@ def cast_multiindex(
     return {"names": obj.names, "data": set(obj.tolist())}
 
 
-@cast.register(pandas.RangeIndex)
+@cast.register(pd.RangeIndex)
 def cast_rangeindex(
-    obj: pandas.RangeIndex, brief_dims: Collection[Hashable]
-) -> pandas.RangeIndex:
+    obj: pd.RangeIndex,
+    brief_dims: Collection[Hashable],  # noqa: ARG001
+) -> pd.RangeIndex:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.RangeIndex`.
 
     This function does nothing - RangeIndex objects are dealt with
     directly by :func:`_recursive_diff`. This function is defined
     to prevent RangeIndex objects to be processed by the more generic
-    ``cast(obj: pandas.Index)`` below.
+    ``cast(obj: pd.Index)`` below.
     """
     return obj
 
 
-@cast.register(pandas.Index)
-def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]) -> xarray.DataArray:
+@cast.register(pd.Index)
+def cast_index(obj: pd.Index, brief_dims: Collection[Hashable]) -> xarray.DataArray:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Index`.
 
@@ -216,7 +216,7 @@ def cast_index(obj: pandas.Index, brief_dims: Collection[Hashable]) -> xarray.Da
 
 
 @cast.register(frozenset)
-def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]) -> set:
+def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]) -> set:  # noqa: ARG001
     """Single dispatch specialised variant of :func:`cast` for
     :class:`frozenset`.
 
@@ -226,7 +226,7 @@ def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]) -> set:
 
 
 @cast.register(tuple)
-def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]) -> list:
+def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]) -> list:  # noqa: ARG001
     """Single dispatch specialised variant of :func:`cast` for
     :class:`tuple`.
 
@@ -265,7 +265,7 @@ def _strip_dataarray(
     # Ravel the array to make it become 1-dimensional.
     # To do this, we must first unstack any already stacked dimension.
     for dim in obj.dims:
-        if isinstance(obj.get_index(dim), pandas.MultiIndex):
+        if isinstance(obj.get_index(dim), pd.MultiIndex):
             res = proper_unstack(res, dim)
 
     # Transpose to ignore dimensions order
