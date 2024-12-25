@@ -2,7 +2,7 @@ name: recursive_diff-docs
 channels:
   - conda-forge
 dependencies:
-  - python=3.12
+  - python=3.13
   - sphinx
   - sphinx_rtd_theme
 

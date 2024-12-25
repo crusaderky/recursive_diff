@@ -5,7 +5,7 @@ problem arises when you want to compare two large JSON data structures, because 
 operator will tell you if the two structures differ *somewhere*, but won't tell you
 where*. Additionally, if the structures contain floating-point numbers, == won't allow
 to set a tolerance: 1.00000000000001 is different from 1.0, which is majorly problematic
-as floating point arithmetics are naturally characterised by noise around the 15th
+as floating point arithmetic is naturally characterised by noise around the 15th
 decimal position (the size of the double-precision mantissa). Tests on floating point
 numbers are typically performed with :func:`math.isclose` or :func:`numpy.isclose`,
 which however are not usable if the numbers to be tested lie deep inside a nested

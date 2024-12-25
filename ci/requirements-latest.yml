@@ -8,5 +8,5 @@ dependencies:
 
   - xarray
   - dask
-  - h5netcdf  # NetCDF engine
-  - scipy  # NetCDF engine
+  - h5netcdf # NetCDF engine
+  - scipy # NetCDF engine

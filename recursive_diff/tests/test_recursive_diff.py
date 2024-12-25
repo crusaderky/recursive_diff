@@ -42,7 +42,7 @@ class Drawing:
 
 @cast.register(Rectangle)
 @cast.register(Drawing)
-def _(obj, brief_dims):
+def _(obj, brief_dims):  # noqa: ARG001
     return {"w": obj.w, "h": obj.h}
 
 

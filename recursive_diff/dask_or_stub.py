@@ -1,5 +1,4 @@
-"""Support dask-backed xarray objects, if dask is installed
-"""
+"""Support dask-backed xarray objects, if dask is installed"""
 
 try:
     from dask import compute

@@ -1,5 +1,5 @@
-"""Tools for unit testing
-"""
+"""Tools for unit testing"""
+
 from typing import Any
 
 from recursive_diff.recursive_diff import recursive_diff

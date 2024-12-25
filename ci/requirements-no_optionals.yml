@@ -7,4 +7,4 @@ dependencies:
   - packaging
 
   - xarray
-  - pyarrow  # Only needed to suppress warnings; remove when pandas 3.0 is released
+  - pyarrow # Only needed to suppress warnings; remove when pandas 3.0 is released
