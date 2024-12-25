@@ -79,6 +79,8 @@ filterwarnings = [
     'ignore:the `pandas.MultiIndex` object.* will no longer be implicitly promoted:FutureWarning',
     'ignore:updating coordinate .* with a PandasMultiIndex:FutureWarning',
     'ignore:Updating MultiIndexed coordinate .* would corrupt indices:FutureWarning',
+    # xarray vs. pandas upstream
+    'ignore:Converting non-nanosecond precision datetimeUserWarning',
 ]
 
 [tool.coverage.report]
