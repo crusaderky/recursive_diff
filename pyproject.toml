@@ -80,7 +80,7 @@ filterwarnings = [
     'ignore:updating coordinate .* with a PandasMultiIndex:FutureWarning',
     'ignore:Updating MultiIndexed coordinate .* would corrupt indices:FutureWarning',
     # xarray vs. pandas upstream
-    'ignore:Converting non-nanosecond precision datetimeUserWarning',
+    'ignore:Converting non-nanosecond precision datetime:UserWarning',
 ]
 
 [tool.coverage.report]
