@@ -8,7 +8,7 @@ import xarray
 from packaging.version import Version
 
 from recursive_diff import cast, recursive_diff
-from recursive_diff.tests import requires_dask
+from recursive_diff.tests import filter_old_numpy_warnings, requires_dask
 
 PANDAS_GE_200 = Version(pd.__version__).release >= (2, 0)
 
@@ -250,6 +250,7 @@ def test_numpy_types():
     check(np.float64(1), np.float64(1.01), abs_tol=0.1)
 
 
+@filter_old_numpy_warnings
 def test_numpy():
     # test tolerance and comparison of float vs. int
     check(

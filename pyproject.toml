@@ -55,20 +55,11 @@ python_files = ["test_*.py"]
 testpaths = ["recursive_diff/tests"]
 filterwarnings = [
   "error",
-  # numpy <1.26 only
-  'ignore:elementwise comparison failed:DeprecationWarning',
-  'ignore:elementwise comparison failed:FutureWarning',
-  'ignore:invalid value encountered in cast:RuntimeWarning',
   # mindeps only
-  'ignore:numpy.ufunc size changed:RuntimeWarning',
   "ignore:Using or importing the ABCs from 'collections':DeprecationWarning",
-  'ignore:other_ds.dims.create_scale\(ds, name\) is deprecated',
-  # Deprecations in proper_unstack
   # FIXME https://github.com/crusaderky/xarray_extras/issues/33
   'ignore:the `pandas.MultiIndex` object.* will no longer be implicitly promoted:FutureWarning',
   'ignore:.*would leave the multi-index level coordinates .* in an inconsistent state:FutureWarning',
-  # xarray vs. pandas upstream
-  'ignore:Converting non-nanosecond precision datetime:UserWarning',
 ]
 
 [tool.coverage.report]
@@ -241,7 +232,9 @@ xarray = "=0.18"
 dask-core = "=2021.6.0"
 # NetCDF engines
 scipy = "=1.5"
-h5netcdf = "=0.7"
+h5netcdf = "=0.11"
+h5py = "=3.3"
+hdf5 = "=1.12"
 
 [tool.pixi.feature.upstream.dependencies]
 python = "=3.14"

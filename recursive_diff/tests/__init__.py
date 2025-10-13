@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib
 
+import numpy as np
 import pytest
+from packaging.version import Version
 
 
 def _import_or_skip(modname: str) -> tuple:
@@ -36,3 +38,14 @@ has_scipy, requires_scipy = _import_or_skip("scipy")
 
 has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
 requires_netcdf = pytest.mark.skipif(not has_netcdf, reason="No NetCDF engine found")
+
+NP_GE_126 = Version(np.__version__) >= Version("1.26")
+
+
+def filter_old_numpy_warnings(testfunc):
+    if NP_GE_126:
+        return testfunc
+    return pytest.mark.filterwarnings(
+        "ignore:elementwise comparison failed:DeprecationWarning",
+        "ignore:elementwise comparison failed:FutureWarning",
+    )(testfunc)
