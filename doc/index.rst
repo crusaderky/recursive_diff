@@ -1,5 +1,5 @@
 recursive_diff: Compare two Python data structures
-**************************************************
+==================================================
 JSON, YAML and msgpack are massively popular formats used to represent nested data. A
 problem arises when you want to compare two large JSON data structures, because the `==`
 operator will tell you if the two structures differ *somewhere*, but won't tell you
@@ -30,7 +30,7 @@ directories full of NetCDF files, as long as they can be loaded with
 :func:`xarray.open_dataset`.
 
 Examples
-========
+--------
 
 .. code::
 
@@ -82,19 +82,20 @@ py.test output::
     [foo][2][0]: one != two
 
 Index
-=====
+-----
 
 .. toctree::
 
    installing
-   whats-new
-   extend
    api
+   extend
    ncdiff
+   develop
+   whats-new
 
 
 Credits
-=======
+-------
 - recursive_diff, recursive_eq and ncdiff were originally developed by
   Legal & General and released to the open source community in 2018.
 - All boilerplate is from
@@ -102,11 +103,11 @@ Credits
   which in turn is from `xarray`_.
 
 License
-=======
+-------
 
-recursive_diff is available under the open source `Apache License`_.
+This software is available under the open source `Apache License`_.
 
 .. _numpy: http://www.numpy.org
 .. _pandas: https://pandas.pydata.org
-.. _xarray: http://xarray.pydata.org
+.. _xarray: https://docs.xarray.dev
 .. _Apache License: http://www.apache.org/licenses/LICENSE-2.0.html

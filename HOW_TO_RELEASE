@@ -8,7 +8,7 @@ Time required: about an hour.
     (check the date!) and add a brief summary note describing the release at the
     top.
  3. If you have any doubts, run the full test suite one final time!
-      py.test
+      pixi run tests
  4. On the main branch, commit the release in git:
       git commit -a -m 'Release vX.Y.Z'
  5. Tag the release:
@@ -25,10 +25,7 @@ Time required: about an hour.
     We also update the stable branch with `git cherrypick` for documentation
     only fixes that apply the current released version.
  8. Build and test the release package
-      python -m pip install --upgrade build twine
-      rm -rf dist
-      python -m build
-      python -m twine check dist/*
+      pixi run dist
  9. Add a section for the next release to doc/whats-new.rst.
 10. Commit your changes and push to main again:
       git commit -a -m 'Revert to dev version'
@@ -39,7 +36,7 @@ Time required: about an hour.
     "Draft a new release" and paste in the latest from whats-new.rst.
 12. Use twine to register and upload the release on pypi. Be careful, you can't
     take this back!
-      twine upload dist/*
+      pixi run twine-upload
     You will need to be listed as a package owner at
     https://pypi.python.org/pypi/recursive_diff for this to work.
 13. Update the docs. Login to https://readthedocs.org/projects/recursive_diff/versions/

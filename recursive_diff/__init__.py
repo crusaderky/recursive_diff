@@ -8,7 +8,7 @@ try:
     __version__ = importlib.metadata.version("recursive_diff")
 except importlib.metadata.PackageNotFoundError:  # pragma: nocover
     # Local copy, not installed with pip
-    __version__ = "999"
+    __version__ = "9999"
 
 # Prevent Intersphinx from pointing to the implementation modules
 for obj in (recursive_diff, recursive_eq, cast):

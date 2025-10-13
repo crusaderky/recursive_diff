@@ -110,7 +110,7 @@ def recursive_diff(
     )
 
 
-def _recursive_diff(  # noqa: PLR0915
+def _recursive_diff(
     lhs: Any,
     rhs: Any,
     *,

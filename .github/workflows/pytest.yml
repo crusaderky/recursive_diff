@@ -10,7 +10,7 @@ on:
 # When this workflow is queued, automatically cancel any previous running
 # or pending jobs from the same branch
 concurrency:
-  group: tests-${{ github.ref }}
+  group: pytest-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -18,105 +18,56 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  build:
-    name:
-      ${{ matrix.os }} ${{ matrix.python-version }} ${{ matrix.requirements }}
-    runs-on: ${{ matrix.os }}-latest
+  test:
+    name: ${{ matrix.os }} ${{ matrix.environment }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        requirements: [latest]
+        os:
+          - ubuntu-latest # x86-64
+          - ubuntu-24.04-arm # ARM
+          - macos-15-intel # x86-64
+          - macos-latest # ARM
+          - windows-latest # x86-64
+        environment:
+          - smoke
+          - mindeps
+          - py39
+          - py311
+          - py314
         include:
-          # Test on macos and windows (first and last version of python only)
-          - os: macos
-            python-version: "3.8"
-            requirements: latest
-          - os: macos
-            python-version: "3.13"
-            requirements: latest
-          - os: windows
-            python-version: "3.8"
-            requirements: latest
-          - os: windows
-            python-version: "3.13"
-            requirements: latest
-          # Test on minimal requirements
-          - os: ubuntu
-            python-version: "3.8"
-            requirements: minimal
-          # Old builds are not available on osx-arm64
-          # - os: macos
-          #   python-version: '3.8'
-          #   requirements: minimal
-          - os: windows
-            python-version: "3.8"
-            requirements: minimal
-          # Test without any optional dependencies
-          - os: ubuntu
-            python-version: "3.8"
-            requirements: no_optionals
-          - os: ubuntu
-            python-version: "3.13"
-            requirements: no_optionals
-          - os: macos
-            python-version: "3.8"
-            requirements: no_optionals
-          - os: macos
-            python-version: "3.13"
-            requirements: no_optionals
-          - os: windows
-            python-version: "3.8"
-            requirements: no_optionals
-          - os: windows
-            python-version: "3.13"
-            requirements: no_optionals
-          # Test on nightly builds of requirements
-          - os: ubuntu
-            python-version: "3.13"
-            requirements: upstream
+          - os: ubuntu-latest
+            environment: upstream
+          - os: ubuntu-latest
+            environment: nogil
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Disregard pixi.lock (upstream only)
+        if: matrix.environment == 'upstream' || matrix.environment == 'nogil'
+        run: rm pixi.lock
+
+      - uses: prefix-dev/setup-pixi@v0.8.10
         with:
-          fetch-depth: 0
+          pixi-version: v0.56.0
+          environments: ${{ matrix.environment }}
+          cache: ${{ matrix.environment != 'upstream' && matrix.environment != 'nogil' }}
+          locked: ${{ matrix.environment != 'upstream' && matrix.environment != 'nogil' }}
 
-      - name: Setup Conda Environment
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniforge-version: latest
-          use-mamba: true
-          python-version: ${{ matrix.python-version }}
-          environment-file: ci/requirements-${{ matrix.requirements }}.yml
-          activate-environment: recursive_diff
+      - name: Smoke test
+        run: pixi run -e ${{ matrix.environment }} smoke-test
 
-      - name: Install nightly builds
-        if: ${{ matrix.requirements == 'upstream' }}
-        run: |
-          mamba uninstall --force numpy pandas scipy pyarrow
-          python -m pip install --no-deps --pre --prefer-binary \
-              --extra-index-url https://pypi.fury.io/arrow-nightlies/ \
-              pyarrow
-          python -m pip install --no-deps --pre \
-              -i https://pypi.anaconda.org/scientific-python-nightly-wheels/simple \
-              numpy pandas scipy
+      - name: pytest with coverage
+        if: matrix.environment != 'nogil' && matrix.environment != 'smoke'
+        run: pixi run -e ${{ matrix.environment }} coverage
 
-      - name: Show conda options
-        run: conda config --show
-
-      - name: conda info
-        run: conda info
-
-      - name: conda list
-        run: conda list
-
-      - name: Install
-        run: python -m pip install --no-deps -e .
-
-      - name: pytest
-        run: py.test --verbose --cov=recursive_diff --cov-report=xml
+      - name: Free-threading stress test
+        if: matrix.environment == 'nogil'
+        run: pixi run -e nogil tests --parallel-threads=4
 
       - name: codecov.io
-        uses: codecov/codecov-action@v3
+        if: matrix.environment != 'nogil' && matrix.environment != 'smoke'
+        uses: codecov/codecov-action@v5

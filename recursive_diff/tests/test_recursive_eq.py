@@ -1,32 +1,18 @@
-import io
-import sys
-from contextlib import contextmanager
-
 import pytest
 
 from recursive_diff import recursive_eq
 
 
-@contextmanager
-def capture_stdout():
-    sys.stdout, backup = io.StringIO(), sys.stdout
-    try:
-        yield sys.stdout
-    finally:
-        sys.stdout = backup
+def test_recursive_eq_success(capsys):
+    recursive_eq(0, 0)
+    assert capsys.readouterr().out == ""
 
 
-def test_recursive_eq_success():
-    with capture_stdout() as out:
-        recursive_eq(0, 0)
-    assert out.getvalue() == ""
-
-
-def test_recursive_eq_fail():
+def test_recursive_eq_fail(capsys):
     # Test the actual log lines dumped out by recursive_eq
-    with capture_stdout() as out, pytest.raises(AssertionError):
+    with pytest.raises(AssertionError):
         recursive_eq(("foo", ("bar", "baz")), ("foo", ("bar", "asd", "lol")))
-    assert out.getvalue().splitlines() == [
+    assert capsys.readouterr().out.splitlines() == [
         "[1]: RHS has 1 more elements than LHS: ['lol']",
         "[1][1]: baz != asd",
     ]

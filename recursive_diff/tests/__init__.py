@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import importlib.metadata
+import importlib
 
 import pytest
-from packaging.version import parse as parse_version
 
 
-def _import_or_skip(modname: str, minversion: str | None = None) -> tuple:
+def _import_or_skip(modname: str) -> tuple:
     """Build skip markers for an optional module
 
     :param str modname:
         Name of the optional module
-    :param str minversion:
-        Minimum required version
     :return:
         Tuple of
 
@@ -22,19 +19,13 @@ def _import_or_skip(modname: str, minversion: str | None = None) -> tuple:
             Tests decorated with it will only run if the module is available
             and >= minversion
     """
-    reason = f"requires {modname}"
-    if minversion:
-        reason += f">={minversion}"
-
     try:
-        version = importlib.metadata.version(modname)
+        importlib.import_module(modname)
         has = True
-    except importlib.metadata.PackageNotFoundError:
-        has = False
-    if has and minversion and parse_version(version) < parse_version(minversion):
+    except ImportError:
         has = False
 
-    func = pytest.mark.skipif(not has, reason=reason)
+    func = pytest.mark.skipif(not has, reason=f"requires {modname}")
     return has, func
 
 

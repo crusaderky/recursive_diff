@@ -1,98 +1,81 @@
 [project]
 name = "recursive_diff"
-authors = [{name = "Guido Imperiale", email = "crusaderky@gmail.com"}]
-license = {text = "Apache"}
+authors = [{ name = "Guido Imperiale", email = "crusaderky@gmail.com" }]
+license = { text = "Apache" }
 description = "Recursively compare two Python data structures"
+keywords = ["diff", "recursive", "xarray", "pandas"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: Apache Software License",
-    "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Free Threading :: 2 - Beta",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "numpy >= 1.16",
-    "pandas >= 0.25",
-    "xarray >= 0.12",
+  "numpy >= 1.20",
+  "pandas >= 1.2",
+  "xarray >= 0.18",
 ]
 dynamic = ["version"]
 
 [project.urls]
-Homepage = "https://github.com/crusaderky/recursive_diff"
-"Bug Tracker" = "https://github.com/crusaderky/recursive_diff/issues"
-Changelog = "https://recursive-diff.readthedocs.io/en/latest/whats-new.html"
+homepage = "https://github.com/crusaderky/recursive_diff"
+issues = "https://github.com/crusaderky/recursive_diff/issues"
+documentation = "https://recursive-diff.readthedocs.io/"
+changelog = "https://recursive-diff.readthedocs.io/en/latest/whats-new.html"
 
 [project.readme]
 text = "Recursively compare two Python data structures"
-content-type = "text/x-rst"
+content-type = "text/plain"
 
 [project.scripts]
 ncdiff = "recursive_diff.ncdiff:main"
 
-[tool.setuptools]
-packages = ["recursive_diff"]
-zip-safe = false # https://mypy.readthedocs.io/en/latest/installed_packages.html
-include-package-data = true
-
-[tool.setuptools_scm]
-# Use hardcoded version when .git has been removed and this is not a package created
-# by sdist. This is the case e.g. of a remote deployment with PyCharm.
-fallback_version = "9999"
-
-[tool.setuptools.package-data]
-recursive_diff = ["py.typed"]
-
 [build-system]
-requires = [
-    "setuptools>=66",
-    "setuptools_scm[toml]",
-]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --strict-config -v -r sxfE --color=yes"
+addopts = "--strict-markers --strict-config -v -r sxfE --color=yes --durations=10"
 xfail_strict = true
 python_files = ["test_*.py"]
 testpaths = ["recursive_diff/tests"]
 filterwarnings = [
-    "error",
-    # numpy <1.26 only
-    'ignore:elementwise comparison failed:DeprecationWarning',
-    'ignore:elementwise comparison failed:FutureWarning',
-    'ignore:invalid value encountered in cast:RuntimeWarning',
-    # mindeps only
-    'ignore:numpy.ufunc size changed:RuntimeWarning',
-    "ignore:Using or importing the ABCs from 'collections':DeprecationWarning",
-    'ignore:other_ds.dims.create_scale\(ds, name\) is deprecated',
-    # Deprecations in proper_unstack
-    # FIXME https://github.com/crusaderky/xarray_extras/issues/33
-    'ignore:the `pandas.MultiIndex` object.* will no longer be implicitly promoted:FutureWarning',
-    'ignore:updating coordinate .* with a PandasMultiIndex:FutureWarning',
-    'ignore:Updating MultiIndexed coordinate .* would corrupt indices:FutureWarning',
-    # xarray vs. pandas upstream
-    'ignore:Converting non-nanosecond precision datetime:UserWarning',
+  "error",
+  # numpy <1.26 only
+  'ignore:elementwise comparison failed:DeprecationWarning',
+  'ignore:elementwise comparison failed:FutureWarning',
+  'ignore:invalid value encountered in cast:RuntimeWarning',
+  # mindeps only
+  'ignore:numpy.ufunc size changed:RuntimeWarning',
+  "ignore:Using or importing the ABCs from 'collections':DeprecationWarning",
+  'ignore:other_ds.dims.create_scale\(ds, name\) is deprecated',
+  # Deprecations in proper_unstack
+  # FIXME https://github.com/crusaderky/xarray_extras/issues/33
+  'ignore:the `pandas.MultiIndex` object.* will no longer be implicitly promoted:FutureWarning',
+  'ignore:.*would leave the multi-index level coordinates .* in an inconsistent state:FutureWarning',
+  # xarray vs. pandas upstream
+  'ignore:Converting non-nanosecond precision datetime:UserWarning',
 ]
 
 [tool.coverage.report]
 show_missing = true
-exclude_lines = [
-    "pragma: nocover",
-    "pragma: no cover",
-    "TYPE_CHECKING",
-    "except ImportError",
-    "@overload",
-    '@(abc\.)?abstractmethod',
-]
+
+[tool.codespell]
+skip = "pixi.lock,build,htmlcov"
 
 [tool.ruff]
 exclude = [".eggs"]
@@ -100,52 +83,56 @@ target-version = "py38"
 
 [tool.ruff.lint]
 ignore = [
-  "EM101",    # Exception must not use a string literal, assign to variable first
-  "EM102",    # Exception must not use an f-string literal, assign to variable first
-  "N802",     # Function name should be lowercase
-  "N803",     # Argument name should be lowercase
-  "N806",     # Variable should be lowercase
-  "N816",     # Variable in global scope should not be mixedCase
-  "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
-  "PLC0414",  # Import alias does not rename original package
-  "PLR0912",  # Too many branches
-  "PLR0913",  # Too many arguments in function definition
-  "PLR2004",  # Magic value used in comparison, consider replacing `123` with a constant variable
-  "PLW2901",  # for loop variable overwritten by assignment target
-  "SIM108",   # Use ternary operator instead of if-else block
-  "N999",     # Invalid module name: 'TEMPLATE'  TODO remove this line
+  "EM101", # Exception must not use a string literal, assign to variable first
+  "EM102", # Exception must not use an f-string literal, assign to variable first
+  "N802", # Function name should be lowercase
+  "N803", # Argument name should be lowercase
+  "N806", # Variable should be lowercase
+  "N816", # Variable in global scope should not be mixedCase
+  "PT006", # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+  "PLC0414", # Import alias does not rename original package
+  "PLR0912", # Too many branches
+  "PLR0913", # Too many arguments in function definition
+  "PLR0915", # Too many statements
+  "PLR2004", # Magic value used in comparison, consider replacing `123` with a constant variable
+  "PLW1641", # Object does not implement `__hash__` method
+  "PLW2901", # for loop variable overwritten by assignment target
+  "SIM108", # Use ternary operator instead of if-else block
 ]
 select = [
-  "YTT",  # flake8-2020
-  "B",    # flake8-bugbear
-  "C4",   # flake8-comprehensions
-  "EM",   # flake8-errmsg
-  "EXE",  # flake8-executable
-  "ICN",  # flake8-import-conventions
-  "G",    # flake8-logging-format
-  "PIE",  # flake8-pie
-  "PT",   # flake8-pytest-style
-  "RET",  # flake8-return
-  "SIM",  # flake8-simplify
-  "ARG",  # flake8-unused-arguments
-  "I",    # isort
-  "NPY",  # NumPy specific rules
-  "N",    # pep8-naming
-  "E",    # Pycodestyle
-  "W",    # Pycodestyle
-  "PGH",  # pygrep-hooks
-  "F",    # Pyflakes
-  "PL",   # pylint
-  "UP",   # pyupgrade
-  "RUF",  # unused-noqa
-  "TID",  # tidy-ups
-  "EXE001",  #  Shebang is present but file is not executable
+  "YTT", # flake8-2020
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "EM", # flake8-errmsg
+  "EXE", # flake8-executable
+  "ICN", # flake8-import-conventions
+  "G", # flake8-logging-format
+  "PIE", # flake8-pie
+  "PT", # flake8-pytest-style
+  "RET", # flake8-return
+  "SIM", # flake8-simplify
+  "ARG", # flake8-unused-arguments
+  "I", # isort
+  "NPY", # NumPy specific rules
+  "N", # pep8-naming
+  "E", # Pycodestyle
+  "W", # Pycodestyle
+  "PGH", # pygrep-hooks
+  "F", # Pyflakes
+  # "PD", # pandas-vet
+  "PL", # pylint
+  "UP", # pyupgrade
+  "RUF", # unused-noqa
+  "TID", # tidy-ups
+  "EXE001", #  Shebang is present but file is not executable
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["TEMPLATE"]
+known-first-party = ["recursive_diff"]
 
 [tool.mypy]
+files = ["recursive_diff"]
+python_version = "3.9"
 disallow_incomplete_defs = true
 disallow_untyped_decorators = true
 disallow_untyped_defs = true
@@ -155,7 +142,137 @@ show_error_codes = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_unreachable = true
+enable_error_code = ["ignore-without-code", "possibly-undefined", "truthy-bool"]
 
 [[tool.mypy.overrides]]
 module = ["*.tests.*"]
 disallow_untyped_defs = false
+
+[tool.pixi.project]
+channels = ["https://prefix.dev/conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.dependencies]
+python = "*"
+numpy = "*"
+pandas = "*"
+xarray = "*"
+
+[tool.pixi.feature.optional.dependencies]
+dask-core = "*"
+# NetCDF engines
+scipy = "*"
+h5netcdf = "*"
+hdf5 = "*"
+
+[tool.pixi.feature.lint.dependencies]
+lefthook = "*"
+ruff = "*"
+mypy = "*"
+dprint = "*"
+actionlint = "*"
+codespell = "*"
+blacken-docs = "*"
+validate-pyproject = "*"
+sphinx-lint = "*"
+# mypy check dependencies
+# TODO typed libraries for mypy here
+
+[tool.pixi.feature.lint.tasks]
+install-git-hooks = { cmd = "lefthook install", description = "Install pre-commit hooks" }
+lint = { cmd = "lefthook run pre-commit --all-files --force", description = "Run all linters" }
+
+[tool.pixi.feature.smoke.tasks]
+smoke-test = { cmd = "python smoke_test.py", description = "Test import the library and print essential information" }
+
+[tool.pixi.feature.tests.dependencies]
+pytest = "*"
+pytest-cov = "*"
+
+[tool.pixi.feature.tests.tasks]
+tests = { cmd = "pytest", description = "Run tests" }
+tests-cov = { cmd = "pytest --cov --cov-report=xml --cov-report=term", description = "Run tests with coverage" }
+coverage = { cmd = "coverage html", depends-on = ["tests-cov"], description = "Generate test coverage html report" }
+open-coverage = { cmd = "open htmlcov/index.html", depends-on = ["coverage"], description = "Open test coverage report" }
+
+[tool.pixi.feature.docs.dependencies]
+pip = "*"
+sphinx = "*"
+sphinx_rtd_theme = "*"
+
+[tool.pixi.feature.docs.tasks]
+docs = { cmd = "sphinx-build -n -j auto -b html -d ../build/doctrees . ../build/html", env = { PYTHONPATH = "$PIXI_PROJECT_ROOT" }, cwd = "doc", description = "Build docs" }
+open-docs = { cmd = "open build/html/index.html", depends-on = ["docs"], description = "Open the generated docs" }
+doc-requirements = { cmd = "echo '# File generated by `pixi run doc-requirements`' > doc/requirements.yml && pixi workspace export conda-environment -e docs >> doc/requirements.yml", description = "Export doc requirements for readthedocs CI" }
+
+[tool.pixi.feature.ipython.dependencies]
+ipython = "*"
+
+[tool.pixi.feature.ipython.tasks]
+ipython = { cmd = "ipython", description = "Launch IPython" }
+
+[tool.pixi.feature.py39.dependencies]
+python = "=3.9"
+
+[tool.pixi.feature.py311.dependencies]
+python = "=3.11"
+
+[tool.pixi.feature.py314.dependencies]
+python = "=3.14"
+
+[tool.pixi.feature.nogil.dependencies]
+python-freethreading = "=3.14"
+pytest-run-parallel = "*"
+
+[tool.pixi.feature.nogil.pypi-dependencies]
+# FIXME Need pandas 3
+# https://github.com/pandas-dev/pandas/issues/61844
+# TODO after reverting to published versions, update .github/workflows/pytest.yml
+# to stop disregarding pixi.lock
+pandas = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+xarray = "*"
+
+[tool.pixi.feature.mindeps.dependencies]
+python = "=3.9"
+numpy = "=1.20"
+pandas = "=1.2"
+xarray = "=0.18"
+# Optional dependencies
+dask-core = "=2021.6.0"
+# NetCDF engines
+scipy = "=1.5"
+h5netcdf = "=0.7"
+
+[tool.pixi.feature.upstream.dependencies]
+python = "=3.14"
+
+[tool.pixi.feature.upstream.pypi-dependencies]
+numpy = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+pandas = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+xarray = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+dask = { git = "https://github.com/dask/dask.git" }
+
+[tool.pixi.feature.dist.dependencies]
+python-build = "*"
+twine = "*"
+
+[tool.pixi.feature.dist.tasks]
+dist-clear = { cmd = "rm -rf build dist" }
+build = { cmd = "python -m build", description = "Build pypi artifacts" }
+dist = { depends-on = ["dist-clear", "build", "twine-check"] }
+twine-check = { cmd = "python -m twine check dist/*" }
+twine-upload = { cmd = "python -m twine upload dist/*" }
+
+[tool.pixi.environments]
+# FIXME use same solve-groups with and without numba
+default = { features = ["py314", "optional", "docs", "smoke", "tests", "ipython"], solve-group = "py314" }
+dist = { features = ["dist"], no-default-feature = true }
+lint = { features = ["lint"], no-default-feature = true }
+docs = { features = ["py314", "docs"], solve-group = "py314" }
+mindeps = { features = ["mindeps", "smoke", "tests"] }
+py39 = { features = ["py39", "optional", "smoke", "tests"] }
+py311 = { features = ["py311", "optional", "smoke", "tests"] }
+py314 = { features = ["py314", "optional", "smoke", "tests"], solve-group = "py314" }
+nogil = { features = ["nogil", "smoke", "tests"], no-default-feature = true }
+upstream = { features = ["upstream", "smoke", "tests"], no-default-feature = true }
+smoke = { features = ["smoke"] }
