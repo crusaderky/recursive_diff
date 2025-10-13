@@ -6,16 +6,19 @@ What's New
 
 v1.3.0 (unreleased)
 -------------------
+- Test against Python 3.13 and 3.14
+- Test against recent Pandas versions (tested up to 3.0 beta)
+- Fixed warnings in recent Pandas versions
 - Bumped up minimum versions for all dependencies:
 
   ========== ====== ========
   Dependency v1.2.0 v1.3.0
   ========== ====== ========
   python     3.8    3.9
-  dask       2.0    2021.6.0
-  numpy      1.16   1.20
-  pandas     0.25   1.2
-  xarray     0.12   0.18
+  dask       2.0    2022.7.0
+  numpy      1.16   1.23
+  pandas     0.25   1.5
+  xarray     0.12   2023.8.0
   ========== ====== ========
 
 

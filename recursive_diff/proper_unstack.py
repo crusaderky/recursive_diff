@@ -35,6 +35,7 @@ def proper_unstack(array: T, dim: Hashable) -> T:
     # Regenerate Pandas multi-index to be ordered by first appearance
     mindex = array.coords[dim].to_pandas().index
 
+    prev_names: list[Hashable] = mindex.names
     levels = []
     codes = []
 
@@ -50,7 +51,8 @@ def proper_unstack(array: T, dim: Hashable) -> T:
 
     mindex = pd.MultiIndex(levels, codes, names=mindex.names)
     array = array.copy()
-    array.coords[dim] = mindex
+    array = array.drop_vars([dim, *prev_names])
+    array.coords.update(xarray.Coordinates.from_pandas_multiindex(mindex, dim))
 
     # Invoke builtin unstack
     array = array.unstack((dim,))
