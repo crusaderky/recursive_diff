@@ -4,7 +4,7 @@ What's New
 ==========
 
 
-v1.3.0 (unreleased)
+v1.3.0 (2024-10-14)
 -------------------
 - Test against Python 3.13 and 3.14
 - Test against recent Pandas versions (tested up to 3.0 beta)
