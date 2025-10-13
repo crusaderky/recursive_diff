@@ -37,8 +37,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/crusaderky/recursive_diff/issues/%s", "#"),
-    "pull": ("https://github.com/crusaderky/recursive_diff/pull/%s", "#"),
+    "issue": ("https://github.com/crusaderky/recursive_diff/issues/%s", "#%s"),
+    "pull": ("https://github.com/crusaderky/recursive_diff/pull/%s", "#%s"),
 }
 
 autosummary_generate = True
