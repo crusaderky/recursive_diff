@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 # documentation build configuration file, created by
 # sphinx-quickstart on Thu Feb  6 18:57:54 2014.
 #
@@ -19,7 +17,7 @@ import recursive_diff
 
 print("python exec:", sys.executable)
 print("sys.path:", sys.path)
-print("TEMPLATE version: ", recursive_diff.__version__)
+print("recursive_diff version: ", recursive_diff.__version__)
 
 
 # -- General configuration ------------------------------------------------
@@ -200,7 +198,7 @@ html_last_updated_fmt = today_fmt
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "recursive_diffdoc"
+htmlhelp_basename = "recursive_diff_doc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -296,11 +294,11 @@ texinfo_documents = [
 # texinfo_no_detailmenu = False
 
 
-# Example configuration for intersphinx: refer to the Python standard library.
+# Configuration for intersphinx
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
-    "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
 }

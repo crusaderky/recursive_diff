@@ -2,6 +2,7 @@ ncdiff
 ======
 Compare either two NetCDF files or all NetCDF files in two directories.
 
+
 Usage
 -----
 ::
@@ -57,6 +58,7 @@ This has the big advantage of simplicity, but a few disadvantages:
   variables that don't sit on the concat_dim.
   See also `xarray#2039 <https://github.com/pydata/xarray/issues/2039>`_.
 - Huge RAM usage in case of monolithic variables
+
 
 Further limitations
 -------------------

@@ -6,7 +6,7 @@ build:
     python: mambaforge-22.9
 
 conda:
-  environment: ci/requirements-docs.yml
+  environment: doc/requirements.yml
 
 python:
   install:
@@ -16,4 +16,5 @@ python:
 sphinx:
   builder: html
   configuration: doc/conf.py
+  # This is deliberately laxer than the setting in CI
   fail_on_warning: false

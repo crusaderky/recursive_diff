@@ -2,7 +2,6 @@ include HOW_TO_RELEASE
 include LICENSE
 include *.md
 include *.py
-recursive-include ci *
 recursive-include doc *
 recursive-include recursive_diff *
 prune doc/_build

@@ -1,5 +1,5 @@
 Extending recursive_diff/recursive_eq
-*************************************
+=====================================
 
 Without any changes, :func:`~recursive_diff.recursive_diff` and
 :func:`~recursive_diff.recursive_eq` can compare arbitrary objects using the

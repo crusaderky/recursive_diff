@@ -1,5 +1,5 @@
-Python API
-**********
+API Reference
+=============
 
 .. autofunction:: recursive_diff.recursive_diff
 

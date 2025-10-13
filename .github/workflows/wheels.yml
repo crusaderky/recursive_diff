@@ -1,0 +1,50 @@
+name: Wheels
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["*"]
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full git history for hatch-vcs
+          fetch-tags: true # Fetch tags for hatch-vcs
+
+      - uses: prefix-dev/setup-pixi@v0.8.10
+        with:
+          pixi-version: v0.56.0
+          cache: true
+          environments: dist
+
+      - name: Build sdist and wheels
+        run: pixi run dist
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install wheel
+        run: pip install dist/*.whl
+
+      - name: Smoke test
+        working-directory: /tmp
+        run: |
+          cp ${{ github.workspace }}/smoke_test.py .
+          python smoke_test.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+          if-no-files-found: error
