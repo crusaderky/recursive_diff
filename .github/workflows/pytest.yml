@@ -33,6 +33,7 @@ jobs:
         environment:
           - smoke
           - mindeps
+          - no-optional
           - py39
           - py311
           - py314

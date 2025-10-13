@@ -35,6 +35,10 @@ def is_array_like(dtype: str) -> bool:
     return dtype in {"int", "float", "complex", "bool", "str", "list", "tuple"}
 
 
+def is_basic_noncontainer(x: object) -> bool:
+    return type(x) in {bool, int, float, type(None), str, bytes}
+
+
 def recursive_diff(
     lhs: Any,
     rhs: Any,
@@ -174,10 +178,10 @@ def _recursive_diff(
             yield diff(f"LHS {msg_lhs}; RHS {msg_rhs}")
         return
 
-    # Don't add internalized objects
-    if not isinstance(lhs, (bool, int, float, type(None), str, bytes)):
+    # Don't add potentially internalized objects
+    if not is_basic_noncontainer(lhs):
         seen_lhs = [*seen_lhs, id(lhs)]
-    if not isinstance(rhs, (bool, int, float, type(None), str, bytes)):
+    if not is_basic_noncontainer(rhs):
         seen_rhs = [*seen_rhs, id(rhs)]
     # End of recursion detection
 
@@ -410,10 +414,13 @@ def _recursive_diff(
                 # e.g. bool or str
                 diffs = lhs.values != rhs.values
 
+                # NumPy <1.26:
                 # Comparison between two non-scalar, incomparable types
-                # (like strings and numbers) will return True
+                # (like strings and numbers) returns True
+                # FutureWarning: elementwise comparison failed; returning scalar
+                # instead, but in the future will perform elementwise comparison
                 if diffs is True:
-                    diffs = np.full(lhs.shape, dtype=bool, fill_value=True)
+                    diffs = np.ones(lhs.shape, dtype=bool)
 
             if diffs.ndim > 1 and lhs.dims[-1] == "__stacked__":
                 # N>0 original dimensions, some (but not all) of which are in
@@ -549,8 +556,9 @@ def _dtype_str(obj: object) -> str:
     """
     try:
         dtype = type(obj).__name__
-    except AttributeError:
-        # Base types don't have __name__
+    except AttributeError:  # pragma: nocover
+        # FIXME This used to be triggered in Python 2. Is it still possible to get here?
+        # Maybe some poorly written C extensions?
         dtype = str(type(obj))
 
     if isinstance(obj, np.integer):
