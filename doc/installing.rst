@@ -4,7 +4,6 @@ Installation
 Required dependencies
 ---------------------
 
-- Python 3.8 or later
 - `xarray <http://xarray.pydata.org/>`__
 - For :doc:`ncdiff`: one or more NetCDF engines;
   see :func:`xarray.open_dataset`
