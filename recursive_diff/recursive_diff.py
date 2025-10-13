@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Collection, Hashable, Iterator
+from contextlib import suppress
 from typing import Any, Literal
 
 import numpy as np
@@ -105,6 +106,8 @@ def recursive_diff(
         abs_tol=abs_tol,
         brief_dims=brief_dims,
         path=[],
+        seen_lhs=[],
+        seen_rhs=[],
         suppress_type_diffs=False,
         join="inner",
     )
@@ -118,6 +121,8 @@ def _recursive_diff(
     abs_tol: float,
     brief_dims: Collection[Hashable] | str,
     path: list[object],
+    seen_lhs: list[int],
+    seen_rhs: list[int],
     suppress_type_diffs: bool,
     join: Literal["inner", "outer"],
 ) -> Iterator[str]:
@@ -125,6 +130,10 @@ def _recursive_diff(
 
     :param list path:
         list of nodes traversed so far, to be prepended to all error messages
+    param list[int] seen_lhs:
+        list of id() of all lhs objects traversed so far, to detect cycles
+    param list[int] seen_rhs:
+        list of id() of all rhs objects traversed so far, to detect cycles
     :param bool suppress_type_diffs:
         if True, don't print out messages about differences in type
     :param str join:
@@ -143,6 +152,34 @@ def _recursive_diff(
         if path_prefix != "":
             path_prefix += ": "
         return path_prefix + msg
+
+    # Detect recursion
+    recursive_lhs = -1
+    recursive_rhs = -1
+    with suppress(ValueError):
+        recursive_lhs = seen_lhs.index(id(lhs))
+    with suppress(ValueError):
+        recursive_rhs = seen_rhs.index(id(rhs))
+
+    if recursive_lhs >= 0 or recursive_rhs >= 0:
+        if recursive_lhs != recursive_rhs:
+            if recursive_lhs == -1:
+                msg_lhs = "is not recursive"
+            else:
+                msg_lhs = f"recurses to {path[: recursive_lhs + 1]}"
+            if recursive_rhs == -1:
+                msg_rhs = "is not recursive"
+            else:
+                msg_rhs = f"recurses to {path[: recursive_rhs + 1]}"
+            yield diff(f"LHS {msg_lhs}; RHS {msg_rhs}")
+        return
+
+    # Don't add internalized objects
+    if not isinstance(lhs, (bool, int, float, type(None), str, bytes)):
+        seen_lhs = [*seen_lhs, id(lhs)]
+    if not isinstance(rhs, (bool, int, float, type(None), str, bytes)):
+        seen_rhs = [*seen_rhs, id(rhs)]
+    # End of recursion detection
 
     # Build string representation of the two variables *before* casting
     lhs_repr = _str_trunc(lhs)
@@ -215,6 +252,8 @@ def _recursive_diff(
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
                 path=[*path, i],
+                seen_lhs=seen_lhs,
+                seen_rhs=seen_rhs,
                 suppress_type_diffs=suppress_type_diffs,
                 join=join,
             )
@@ -271,6 +310,8 @@ def _recursive_diff(
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
                 path=[*path, key],
+                seen_lhs=seen_lhs,
+                seen_rhs=seen_rhs,
                 suppress_type_diffs=suppress_type_diffs,
                 join=join,
             )
@@ -426,6 +467,8 @@ def _recursive_diff(
                     abs_tol=abs_tol,
                     brief_dims=brief_dims,
                     path=path,
+                    seen_lhs=seen_lhs,
+                    seen_rhs=seen_rhs,
                     suppress_type_diffs=True,
                     join=join,
                 )
@@ -441,6 +484,8 @@ def _recursive_diff(
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
                 path=path,
+                seen_lhs=seen_lhs,
+                seen_rhs=seen_rhs,
                 suppress_type_diffs=True,
                 join=join,
             )

@@ -857,3 +857,48 @@ def test_dask(chunk_lhs, chunk_rhs):
         rhs = rhs.chunk(chunk_rhs)
 
     check(lhs, rhs, "[data][x=2]: c != d")
+
+
+def test_recursion():
+    lhs = []
+    lhs.append(lhs)
+    rhs = [1]
+    check(lhs, rhs, "[0]: LHS recurses to [0]; RHS is not recursive")
+    check(rhs, lhs, "[0]: LHS is not recursive; RHS recurses to [0]")
+
+    rhs = []
+    rhs.append(rhs)
+    check(lhs, rhs)
+
+
+def test_recursion_different_target_different():
+    lhs = [[1, 2], [3, 4]]
+    lhs.append(lhs[0])
+    rhs = [[1, 2], [3, 4]]
+    rhs.append(rhs[1])
+
+    check(
+        lhs,
+        rhs,
+        "[2][0]: 1 != 3 (abs: 2.0e+00, rel: 2.0e+00)",
+        "[2][1]: 2 != 4 (abs: 2.0e+00, rel: 1.0e+00)",
+    )
+
+
+def test_recursion_different_target_identical():
+    lhs = [[1, 2], [1, 2]]
+    lhs.append(lhs[0])
+    rhs = [[1, 2], [1, 2]]
+    rhs.append(rhs[1])
+    check(lhs, rhs)
+
+
+def test_repetition_is_not_recursion():
+    class C:
+        def __eq__(self, other):
+            return isinstance(other, C)
+
+    c1 = C()
+    lhs = [c1, c1]
+    rhs = [c1, C()]
+    check(lhs, rhs)

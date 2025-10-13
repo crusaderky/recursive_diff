@@ -8,7 +8,8 @@ v1.3.0 (unreleased)
 -------------------
 - Test against Python 3.13 and 3.14
 - Test against recent Pandas versions (tested up to 3.0 beta)
-- Fixed warnings in recent Pandas versions
+- Detect and handle recursion in data structures (:issue:`24`)
+- Fixed warnings in recent Pandas versions (:issue:`27`)
 - Bumped up minimum versions for all dependencies:
 
   ========== ====== ========
