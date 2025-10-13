@@ -5,23 +5,21 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray
-from packaging.version import Version
 
 from recursive_diff import cast, recursive_diff
-from recursive_diff.tests import filter_old_numpy_warnings, requires_dask
-
-PANDAS_GE_200 = Version(pd.__version__).release >= (2, 0)
+from recursive_diff.tests import PANDAS_GE_200, filter_old_numpy_warnings, requires_dask
 
 
 class Rectangle:
-    """Sample class to test custom comparisons"""
+    """Sample class to test custom comparisons."""
 
     def __init__(self, w, h):
         self.w = w
         self.h = h
 
     def __eq__(self, other):
-        return self.w == other.w and self.h == other.h
+        # Never invoked thanks to @cast.register
+        raise AssertionError("__eq__ should not be called")  # pragma: nocover
 
     def __repr__(self):
         return f"Rectangle({self.w}, {self.h})"
@@ -37,7 +35,8 @@ class Drawing:
         self.h = h
 
     def __eq__(self, other):
-        return self.w == other.w and self.h == other.h
+        # Never invoked thanks to @cast.register
+        raise AssertionError("__eq__ should not be called")  # pragma: nocover
 
 
 @cast.register(Rectangle)
@@ -309,6 +308,14 @@ def test_numpy():
         "[data][0, 1]: 2 != 4 (abs: 2.0e+00, rel: 1.0e+00)",
     )
 
+    # list vs. numpy
+    check(
+        [[1, 4, 3], [4, 5, 6]],
+        np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int64),
+        "object type differs: list != ndarray<int64>",
+        "[data][0, 1]: 4 != 2 (abs: -2.0e+00, rel: -5.0e-01)",
+    )
+
     # numpy vs. other object
     check(
         np.array([0, 0], dtype=np.int64),
@@ -485,6 +492,14 @@ def test_pandas_rangeindex():
         pd.Index([0, 1, 2]),
         "3 is in LHS only",
         f"object type differs: RangeIndex != {int_index}",
+    )
+
+    # Regular index vs RangeIndex
+    check(
+        pd.Index([0, 1, 2]),
+        pd.RangeIndex(4),
+        "3 is in RHS only",
+        f"object type differs: {int_index} != RangeIndex",
     )
 
 

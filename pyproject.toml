@@ -257,6 +257,7 @@ mindeps = { features = ["mindeps", "smoke", "tests"] }
 py39 = { features = ["py39", "optional", "smoke", "tests"] }
 py311 = { features = ["py311", "optional", "smoke", "tests"] }
 py314 = { features = ["py314", "optional", "smoke", "tests"], solve-group = "py314" }
+no-optional = { features = ["py314", "smoke", "tests"], solve-group = "py314" }
 nogil = { features = ["nogil", "smoke", "tests"], no-default-feature = true }
 upstream = { features = ["upstream", "smoke", "tests"], no-default-feature = true }
 smoke = { features = ["smoke"] }

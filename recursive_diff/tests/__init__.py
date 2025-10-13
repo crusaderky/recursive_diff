@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 
 import numpy as np
+import pandas as pd
 import pytest
 from packaging.version import Version
 
@@ -39,11 +40,12 @@ has_scipy, requires_scipy = _import_or_skip("scipy")
 has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
 requires_netcdf = pytest.mark.skipif(not has_netcdf, reason="No NetCDF engine found")
 
-NP_GE_126 = Version(np.__version__) >= Version("1.26")
+NUMPY_GE_126 = Version(np.__version__) >= Version("1.26")
+PANDAS_GE_200 = Version(pd.__version__) >= Version("2.0")
 
 
 def filter_old_numpy_warnings(testfunc):
-    if NP_GE_126:
+    if NUMPY_GE_126:
         return testfunc
     return pytest.mark.filterwarnings(
         "ignore:elementwise comparison failed:DeprecationWarning",
