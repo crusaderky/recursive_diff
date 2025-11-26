@@ -45,15 +45,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Disregard pixi.lock (upstream only)
         if: matrix.environment == 'upstream' || matrix.environment == 'nogil'
         run: rm pixi.lock
 
-      - uses: prefix-dev/setup-pixi@v0.8.10
+      - uses: prefix-dev/setup-pixi@v0
         with:
-          pixi-version: v0.56.0
+          pixi-version: v0.59.0
           environments: ${{ matrix.environment }}
           cache: ${{ matrix.environment != 'upstream' && matrix.environment != 'nogil' }}
           locked: ${{ matrix.environment != 'upstream' && matrix.environment != 'nogil' }}
