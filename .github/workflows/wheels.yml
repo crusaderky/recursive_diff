@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Fetch full git history for hatch-vcs
           fetch-tags: true # Fetch tags for hatch-vcs
 
-      - uses: prefix-dev/setup-pixi@v0.8.10
+      - uses: prefix-dev/setup-pixi@v0
         with:
-          pixi-version: v0.56.0
+          pixi-version: v0.59.0
           cache: true
           environments: dist
 
@@ -43,7 +43,7 @@ jobs:
           cp ${{ github.workspace }}/smoke_test.py .
           python smoke_test.py
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: dist
           path: dist/*

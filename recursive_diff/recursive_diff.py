@@ -429,16 +429,16 @@ def _recursive_diff(
                 # Produce diffs count along brief_dims
                 diffs = diffs.astype(int).sum(axis=tuple(range(diffs.ndim - 1)))
                 # Reattach original coords
-                diffs = xarray.DataArray(
+                diffs_da = xarray.DataArray(
                     diffs,
                     dims=["__stacked__"],
                     coords={"__stacked__": lhs.coords["__stacked__"]},
                 )
                 # Filter out identical elements
-                diffs = diffs[diffs != 0]
+                diffs_da = diffs_da[diffs_da != 0]
                 # Convert the diff count to plain dict with the original coords
-                diffs = _dataarray_to_dict(diffs)
-                for k, count in sorted(diffs.items()):
+                diffs_dict = _dataarray_to_dict(diffs_da)
+                for k, count in sorted(diffs_dict.items()):
                     yield diff(f"{count} differences", print_path=[*path, k])
 
             elif "__stacked__" not in lhs.dims:
@@ -447,7 +447,7 @@ def _recursive_diff(
                 # Produce diffs count along brief_dims
                 count = diffs.astype(int).sum()
                 if count:
-                    yield diff(f"{count} differences")
+                    yield diff(f"{count} differences")  # type: ignore[unreachable]
             else:
                 # N>0 original dimensions, none of which are in brief_dims
 

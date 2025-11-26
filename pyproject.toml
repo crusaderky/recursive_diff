@@ -132,7 +132,7 @@ enable_error_code = ["ignore-without-code", "possibly-undefined", "truthy-bool"]
 module = ["*.tests.*"]
 disallow_untyped_defs = false
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["https://prefix.dev/conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
 
@@ -160,7 +160,7 @@ blacken-docs = "*"
 validate-pyproject = "*"
 sphinx-lint = "*"
 # mypy check dependencies
-# TODO typed libraries for mypy here
+dask-core = "*"
 
 [tool.pixi.feature.lint.tasks]
 install-git-hooks = { cmd = "lefthook install", description = "Install pre-commit hooks" }
@@ -248,10 +248,9 @@ twine-check = { cmd = "python -m twine check dist/*" }
 twine-upload = { cmd = "python -m twine upload dist/*" }
 
 [tool.pixi.environments]
-# FIXME use same solve-groups with and without numba
 default = { features = ["py314", "optional", "docs", "smoke", "tests", "ipython"], solve-group = "py314" }
 dist = { features = ["dist"], no-default-feature = true }
-lint = { features = ["lint"], no-default-feature = true }
+lint = { features = ["lint"] }
 docs = { features = ["py314", "docs"], solve-group = "py314" }
 mindeps = { features = ["mindeps", "smoke", "tests"] }
 py39 = { features = ["py39", "optional", "smoke", "tests"] }
