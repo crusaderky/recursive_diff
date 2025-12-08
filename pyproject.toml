@@ -133,7 +133,7 @@ module = ["*.tests.*"]
 disallow_untyped_defs = false
 
 [tool.pixi.workspace]
-channels = ["https://prefix.dev/conda-forge"]
+channels = ["https://prefix.dev/conda-forge", "conda-forge/label/pandas_rc"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
 
 [tool.pixi.dependencies]
@@ -206,15 +206,8 @@ python = "=3.14"
 
 [tool.pixi.feature.nogil.dependencies]
 python-freethreading = "=3.14"
+pandas = { version = ">=3.0.0rc0", channel = "conda-forge/label/pandas_rc" }
 pytest-run-parallel = "*"
-
-[tool.pixi.feature.nogil.pypi-dependencies]
-# FIXME Need pandas 3
-# https://github.com/pandas-dev/pandas/issues/61844
-# TODO after reverting to published versions, update .github/workflows/pytest.yml
-# to stop disregarding pixi.lock
-pandas = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
-xarray = "*"
 
 [tool.pixi.feature.mindeps.dependencies]
 python = "=3.9"
@@ -257,6 +250,6 @@ py39 = { features = ["py39", "optional", "smoke", "tests"] }
 py311 = { features = ["py311", "optional", "smoke", "tests"] }
 py314 = { features = ["py314", "optional", "smoke", "tests"], solve-group = "py314" }
 no-optional = { features = ["py314", "smoke", "tests"], solve-group = "py314" }
-nogil = { features = ["nogil", "smoke", "tests"], no-default-feature = true }
+nogil = { features = ["nogil", "smoke", "tests"] }
 upstream = { features = ["upstream", "smoke", "tests"], no-default-feature = true }
 smoke = { features = ["smoke"] }
