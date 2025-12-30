@@ -14,7 +14,7 @@ Installing with conda
 
 .. code-block:: bash
 
-    conda install recursive_diff
+    conda install -c conda-forge recursive_diff
 
 
 Installing with pip
