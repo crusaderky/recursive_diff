@@ -447,7 +447,7 @@ def _recursive_diff(
                 # Produce diffs count along brief_dims
                 count = diffs.astype(int).sum()
                 if count:
-                    yield diff(f"{count} differences")  # type: ignore[unreachable]
+                    yield diff(f"{count} differences")
             else:
                 # N>0 original dimensions, none of which are in brief_dims
 
