@@ -2,7 +2,6 @@
 name: docs
 channels:
 - https://prefix.dev/conda-forge
-- conda-forge/label/pandas_rc
 - nodefaults
 dependencies:
 - python 3.14.*

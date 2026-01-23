@@ -133,7 +133,7 @@ module = ["*.tests.*"]
 disallow_untyped_defs = false
 
 [tool.pixi.workspace]
-channels = ["https://prefix.dev/conda-forge", "conda-forge/label/pandas_rc"]
+channels = ["https://prefix.dev/conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
 
 [tool.pixi.dependencies]
@@ -206,7 +206,6 @@ python = "=3.14"
 
 [tool.pixi.feature.nogil.dependencies]
 python-freethreading = "=3.14"
-pandas = { version = ">=3.0.0rc0", channel = "conda-forge/label/pandas_rc" }
 pytest-run-parallel = "*"
 
 [tool.pixi.feature.mindeps.dependencies]
