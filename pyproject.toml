@@ -144,10 +144,8 @@ xarray = "*"
 
 [tool.pixi.feature.optional.dependencies]
 dask-core = "*"
-# NetCDF engines
-scipy = "*"
-h5netcdf = "*"
-hdf5 = "*"
+scipy = "*" # NetCDF engine
+h5netcdf = "*" # NetCDF engine
 
 [tool.pixi.feature.lint.dependencies]
 lefthook = "*"
@@ -155,6 +153,8 @@ ruff = "*"
 mypy = "*"
 dprint = "*"
 actionlint = "*"
+shellcheck = "*" # Runs inside actionlint
+pyflakes = "*" # Runs inside actionlint
 codespell = "*"
 blacken-docs = "*"
 validate-pyproject = "*"
@@ -215,9 +215,9 @@ pandas = "=1.5"
 xarray = "=2023.8.0"
 # Optional dependencies
 dask-core = "=2022.7.0"
-# NetCDF engines
-scipy = "=1.8"
-h5netcdf = "=1.0"
+scipy = "=1.8" # NetCDF engine
+h5netcdf = "=1.0" # NetCDF engine
+h5py = "=3.6"
 
 [tool.pixi.feature.upstream.dependencies]
 python = "=3.14"
@@ -225,8 +225,11 @@ python = "=3.14"
 [tool.pixi.feature.upstream.pypi-dependencies]
 numpy = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 pandas = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+scipy = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+h5py = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 xarray = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 dask = { git = "https://github.com/dask/dask.git" }
+h5netcdf = { git = "https://github.com/h5netcdf/h5netcdf.git" }
 
 [tool.pixi.feature.dist.dependencies]
 python-build = "*"
