@@ -1,5 +1,5 @@
-ncdiff
-======
+CLI tool
+========
 Compare either two NetCDF files or all NetCDF files in two directories.
 
 
@@ -7,10 +7,11 @@ Usage
 -----
 ::
 
-  usage: ncdiff [-h] [--engine {netcdf4,scipy,pydap,h5netcdf}] [--quiet]
-                [--recursive] [--match PATTERN [PATTERN ...]]
-                [--rtol RTOL] [--atol ATOL] [--brief_dims DIM [DIM ...] | --brief]
-                lhs rhs
+  usage: recursive-diff [-h] [--engine {netcdf4,scipy,pydap,h5netcdf}] [--quiet]
+                        [--recursive] [--match PATTERN [PATTERN ...]]
+                        [--rtol RTOL] [--atol ATOL]
+                        [--brief_dims DIM [DIM ...] | --brief]
+                        lhs rhs
 
   Compare either two NetCDF files or all NetCDF files in two directories.
 
@@ -25,7 +26,8 @@ Usage
     --quiet, -q           Suppress logging
     --recursive, -r       Compare all NetCDF files with matching names in two directories
     --match, -m PATTERN [PATTERN ...]
-                          Bash wildcard patterns for file names when using --recursive (default: **/*.nc)
+                          Bash wildcard patterns for file names when using --recursive
+                          (default: **/*.nc)
     --rtol RTOL           Relative comparison tolerance (default: 1e-9)
     --atol ATOL           Absolute comparison tolerance (default: 0)
     --brief_dims DIM [DIM ...]
@@ -35,9 +37,9 @@ Usage
   Examples:
 
   Compare two NetCDF files:
-    ncdiff a.nc b.nc
+    recursive-diff a.nc b.nc
   Compare all NetCDF files with identical names in two directories:
-    ncdiff -r dir1 dir2
+    recursive-diff -r dir1 dir2
 
 
 Chunking and RAM design

@@ -39,7 +39,8 @@ text = "Recursively compare two Python data structures"
 content-type = "text/plain"
 
 [project.scripts]
-ncdiff = "recursive_diff.ncdiff:main"
+recursive-diff = "recursive_diff.cli.recursive_diff:main"
+ncdiff = "recursive_diff.cli.ncdiff:main"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
