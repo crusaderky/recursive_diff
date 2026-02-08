@@ -25,9 +25,8 @@ speed.
 Another function, :func:`~recursive_diff.recursive_eq`, is designed to be used in unit
 tests.
 
-Finally, the command-line tool :doc:`recursive-diff` allows comparing two NetCDF files,
-or two directories full of NetCDF files, as long as they can be loaded with
-:func:`xarray.open_dataset`.
+Finally, the :doc:`cli` allows comparing two NetCDF files, or two directories full of
+NetCDF files, as long as they can be loaded with :func:`xarray.open_dataset`.
 
 Examples
 --------
