@@ -3,8 +3,8 @@ import os
 import pytest
 import xarray
 
-from recursive_diff.cli.recursive_diff import main
 from recursive_diff.cli.ncdiff import main as ncdiff_main
+from recursive_diff.cli.recursive_diff import main
 from recursive_diff.tests import (
     has_netcdf,
     requires_h5netcdf,
@@ -314,6 +314,8 @@ def test_ncdiff(tmpdir, capsys):
     os.chdir(str(tmpdir))
 
     a_lhs = a
+    os.makedirs(f"{tmpdir}/lhs")
+    os.makedirs(f"{tmpdir}/rhs")   
     a_lhs.to_netcdf(f"{tmpdir}/lhs/a.nc")
     a_lhs.to_netcdf(f"{tmpdir}/lhs/b.nc")
     a_rhs = a.copy(deep=True)
@@ -321,10 +323,11 @@ def test_ncdiff(tmpdir, capsys):
     a_rhs.to_netcdf("rhs/a.nc")
     a_rhs.to_netcdf("rhs/b.nc")
 
-    exit_code = ncdiff_main(["-r", "-m", "b.nc", "lhs", "rhs"])
+    with pytest.warns(FutureWarning, match="ncdiff is deprecated"):
+        exit_code = ncdiff_main(["-r", "-m", "b.nc", "lhs", "rhs"])
     assert exit_code == 1
     assert_stdout(
         capsys,
-        "[b.nc][data_vars][d1][x=30]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
+        "[b.nc][data_vars][d1][x=10]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
         "Found 1 differences\n",
     )

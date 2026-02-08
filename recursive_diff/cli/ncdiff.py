@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import warnings
 import sys
+import warnings
 
 from .recursive_diff import main as recursive_diff_main
 
@@ -14,7 +14,7 @@ def main(argv: list[str] | None = None) -> int:
         FutureWarning,
         stacklevel=2,
     )
-    return recursive_diff_main(argv, ncdiff=True)
+    return recursive_diff_main(argv, cli_name="ncdiff")
 
 
 if __name__ == "__main__":

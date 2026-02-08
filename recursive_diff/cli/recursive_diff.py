@@ -10,6 +10,7 @@ import glob
 import logging
 import os
 import sys
+from typing import Literal
 
 import xarray
 
@@ -18,18 +19,17 @@ from recursive_diff.recursive_diff import recursive_diff
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
-def argparser(ncdiff: bool = False) -> argparse.ArgumentParser:
+def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.ArgumentParser:
     """Return precompiled ArgumentParser"""
-    script_name = "ncdiff" if ncdiff else "recursive-diff"
     parser = argparse.ArgumentParser(
         description="Compare either two NetCDF files or all NetCDF files in "
         "two directories.",
         epilog="Examples:\n\n"
         "Compare two NetCDF files:\n"
-        f"  {script_name} a.nc b.nc\n"
+        f"  {cli_name} a.nc b.nc\n"
         "Compare all NetCDF files with identical names in two "
         "directories:\n"
-        f"  {script_name} -r dir1 dir2\n",
+        f"  {cli_name} -r dir1 dir2\n",
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
@@ -53,7 +53,7 @@ def argparser(ncdiff: bool = False) -> argparse.ArgumentParser:
         help="Compare all NetCDF files with matching names in two directories",
     )
 
-    if ncdiff:
+    if cli_name == "ncdiff":
         parser.add_argument(
             "--match",
             "-m",
@@ -65,6 +65,7 @@ def argparser(ncdiff: bool = False) -> argparse.ArgumentParser:
             "(default: **/*.nc)",
         )
     else:
+        assert cli_name == "recursive-diff"
         parser.add_argument(
             "--match",
             "-m",
@@ -167,21 +168,25 @@ def recursive_open_netcdf(
     }
 
 
-def main(argv: list[str] | None = None, *, ncdiff: bool = False) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    cli_name: Literal["recursive-diff", "ncdiff"] = "recursive-diff",
+) -> int:
     """Parse command-line arguments, load all files, and invoke recursive_diff
 
     :param list[str] argv:
         List of command-line arguments (excluding the script name). If None,
         the arguments will be taken from sys.argv.
-    :param bool ncdiff:
-        DEPRECATED. False if is the new recursive-diff tool; True if it's the
-        old ncdiff. The two differ only by command-line arguments.
+    :param str cli_name:
+        DEPRECATED. Name of the CLI tool to implement. The new recursive-diff and the
+        deprecated ncdiff differ only by command-line arguments.
 
     :returns:
         exit code
     """
     # Parse command-line arguments and init logging
-    args = argparser().parse_args(argv)
+    args = argparser(cli_name=cli_name).parse_args(argv)
     if args.brief:
         args.brief_dims = "all"
 

@@ -43,6 +43,12 @@ jobs:
           cp ${{ github.workspace }}/smoke_test.py .
           python smoke_test.py
 
+      - name: CLI tools smoke test
+        working-directory: /tmp
+        run: |
+          recursive-diff --help
+          ncdiff --help
+
       - uses: actions/upload-artifact@v5
         with:
           name: dist
