@@ -6,14 +6,18 @@ What's New
 v1.4.0 (unreleased)
 -------------------
 - Dropped support for pynio, cfgrib, and pseudonetcdf NetCDF engines
-- Support for multiple `ncdiff` wildcard patterns, e.g.
-  `ncdiff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2` or
-  `ncdiff -r dir1 dir2 -m "foo*.nc" "bar*.nc"`
+- `ncdiff` CLI tool has been deprecated in favor of the new `recursive-diff`.
+- `recursive-diff` supports multiple wildcard patterns, e.g.
+  `recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2` or
+  `recursive-diff -r dir1 dir2 -m "foo*.nc" "bar*.nc"`
 
   .. note::
 
-     This breaks backwards compatibility with the syntax
-     `ncdiff -r -m "foo*.nc" dir1 dir2` (note the lack of `--`).
+     This means that the syntax `ncdiff -r -m "foo*.nc" dir1 dir2` is valid, while
+     `recursive-diff -r -m "foo*.nc" dir1 dir2` is not. You should either use
+     `recursive-diff -r dir1 dir2 -m "foo*.nc"` or  `recursive-diff -r -m "foo*.nc"
+     "bar*.nc" -- dir1 dir2` (note the `--` to separate the patterns from the
+     directories).
 
 
 v1.3.0 (2025-10-14)

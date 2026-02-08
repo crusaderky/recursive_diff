@@ -5,7 +5,7 @@ Required dependencies
 ---------------------
 
 - `xarray <http://xarray.pydata.org/>`__
-- For :doc:`ncdiff`: one or more NetCDF engines;
+- For the :doc:`cli`: one or more NetCDF engines;
   see :func:`xarray.open_dataset`
 
 

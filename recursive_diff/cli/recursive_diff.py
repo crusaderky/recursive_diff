@@ -1,6 +1,6 @@
 """Compare either two NetCDF files or all NetCDF files in two directories.
 
-See :doc:`bin/ncdiff`
+See :doc:`bin/recursive-diff`
 """
 
 from __future__ import annotations
@@ -18,17 +18,18 @@ from recursive_diff.recursive_diff import recursive_diff
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
-def argparser() -> argparse.ArgumentParser:
+def argparser(ncdiff: bool = False) -> argparse.ArgumentParser:
     """Return precompiled ArgumentParser"""
+    script_name = "ncdiff" if ncdiff else "recursive-diff"
     parser = argparse.ArgumentParser(
         description="Compare either two NetCDF files or all NetCDF files in "
         "two directories.",
         epilog="Examples:\n\n"
         "Compare two NetCDF files:\n"
-        "  ncdiff a.nc b.nc\n"
+        f"  {script_name} a.nc b.nc\n"
         "Compare all NetCDF files with identical names in two "
         "directories:\n"
-        "  ncdiff -r dir1 dir2\n",
+        f"  {script_name} -r dir1 dir2\n",
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
@@ -51,16 +52,29 @@ def argparser() -> argparse.ArgumentParser:
         action="store_true",
         help="Compare all NetCDF files with matching names in two directories",
     )
-    parser.add_argument(
-        "--match",
-        "-m",
-        nargs="+",
-        dest="patterns",
-        metavar="PATTERN",
-        default=["**/*.nc"],
-        help="Bash wildcard patterns for file names when using --recursive "
-        "(default: **/*.nc)",
-    )
+
+    if ncdiff:
+        parser.add_argument(
+            "--match",
+            "-m",
+            dest="patterns",
+            nargs=1,
+            metavar="PATTERN",
+            default=["**/*.nc"],
+            help="Bash wildcard pattern for file names when using --recursive "
+            "(default: **/*.nc)",
+        )
+    else:
+        parser.add_argument(
+            "--match",
+            "-m",
+            dest="patterns",
+            nargs="+",
+            metavar="PATTERN",
+            default=["**/*.nc"],
+            help="Bash wildcard patterns for file names when using --recursive "
+            "(default: **/*.nc)",
+        )
 
     parser.add_argument(
         "--rtol",
@@ -153,8 +167,15 @@ def recursive_open_netcdf(
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, ncdiff: bool = False) -> int:
     """Parse command-line arguments, load all files, and invoke recursive_diff
+
+    :param list[str] argv:
+        List of command-line arguments (excluding the script name). If None,
+        the arguments will be taken from sys.argv.
+    :param bool ncdiff:
+        DEPRECATED. False if is the new recursive-diff tool; True if it's the
+        old ncdiff. The two differ only by command-line arguments.
 
     :returns:
         exit code
