@@ -7,11 +7,10 @@ Usage
 -----
 ::
 
-    usage: ncdiff.py [-h]
-                     [--engine {netcdf4,scipy,pydap,h5netcdf,pynio,cfgrib,pseudonetcdf}]
-                     [--quiet] [--recursive] [--match MATCH] [--rtol RTOL]
-                     [--atol ATOL] [--brief_dims DIM [DIM ...] | --brief]
-                     lhs rhs
+    usage: ncdiff [-h] [--engine {netcdf4,scipy,pydap,h5netcdf}] [--quiet]
+                  [--recursive] [--match MATCH] [--rtol RTOL] [--atol ATOL]
+                  [--brief_dims DIM [DIM ...] | --brief]
+                  lhs rhs
 
     Compare either two NetCDF files or all NetCDF files in two directories.
 
@@ -19,15 +18,13 @@ Usage
       lhs                   Left-hand-side NetCDF file or (if --recursive) directory
       rhs                   Right-hand-side NetCDF file or (if --recursive) directory
 
-    optional arguments:
+    options:
       -h, --help            show this help message and exit
-      --engine {netcdf4,scipy,pydap,h5netcdf,pynio,cfgrib,pseudonetcdf},
-      -e {netcdf4,scipy,pydap,h5netcdf,pynio,cfgrib,pseudonetcdf}
-                            NeCDF engine (may require additional modules
+      --engine, -e {netcdf4,scipy,pydap,h5netcdf}
+                            NeCDF engine (may require additional modules)
       --quiet, -q           Suppress logging
       --recursive, -r       Compare all NetCDF files with matching names in two directories
-      --match MATCH, -m MATCH
-                            Bash wildcard match for file names when using --recursive (default: **/*.nc)
+      --match, -m MATCH     Bash wildcard match for file names when using --recursive (default: **/*.nc)
       --rtol RTOL           Relative comparison tolerance (default: 1e-9)
       --atol ATOL           Absolute comparison tolerance (default: 0)
       --brief_dims DIM [DIM ...]

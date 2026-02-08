@@ -4,7 +4,20 @@ import pytest
 import xarray
 
 from recursive_diff.ncdiff import main
-from recursive_diff.tests import requires_h5netcdf, requires_netcdf, requires_scipy
+from recursive_diff.tests import (
+    has_netcdf,
+    requires_h5netcdf,
+    requires_netcdf,
+    requires_netcdf4,
+    requires_scipy,
+)
+
+# Suppress warning emitted by NetCDF4 for all versions of NumPy
+pytestmark = [
+    pytest.mark.filterwarnings(
+        "ignore:numpy.ndarry size changed:RuntimeWarning:netCDF4"
+    )
+]
 
 a = xarray.Dataset(
     data_vars={
@@ -168,25 +181,103 @@ def test_recursive(tmpdir, capsys, argv, out):
     assert_stdout(capsys, out)
 
 
-@requires_scipy
-@requires_h5netcdf
-def test_engine(tmpdir, capsys):
+@pytest.mark.parametrize(
+    "engine",
+    [
+        pytest.param("netcdf4", marks=[requires_netcdf4]),
+        pytest.param("h5netcdf", marks=[requires_h5netcdf]),
+        pytest.param("scipy", marks=[requires_scipy]),
+    ],
+)
+def test_engine(tmpdir, capsys, engine):
     """Test the --engine parameter"""
     os.chdir(str(tmpdir))
     b = a.copy(deep=True)
     b.d1[0] += 10
-    a.to_netcdf("a.nc", engine="h5netcdf", encoding={"d1": {"compression": "lzf"}})
-    b.to_netcdf("b.nc", engine="h5netcdf")
+    a.to_netcdf("a.nc", engine=engine)
+    b.to_netcdf("b.nc", engine=engine)
 
-    with pytest.raises(TypeError) as e:
-        main(["--engine", "scipy", "a.nc", "b.nc"])
-    assert "a.nc is not a valid NetCDF 3 file" in str(e.value)
-
-    # Differences in compression are not picked up
-    exit_code = main(["--engine", "h5netcdf", "a.nc", "b.nc"])
+    exit_code = main(["--engine", engine, "a.nc", "b.nc"])
     assert exit_code == 1
     assert_stdout(
         capsys,
         "[data_vars][d1][x=10]: 1 != 11 (abs: 1.0e+01, rel: 1.0e+01)\n"
         "Found 1 differences\n",
     )
+
+
+@pytest.mark.parametrize(
+    "w_engine,r_engine",
+    [
+        pytest.param("scipy", "netcdf4", marks=[requires_scipy, requires_netcdf4]),
+        pytest.param(
+            "h5netcdf", "netcdf4", marks=[requires_h5netcdf, requires_netcdf4]
+        ),
+        pytest.param(
+            "netcdf4", "h5netcdf", marks=[requires_netcdf4, requires_h5netcdf]
+        ),
+    ],
+)
+def test_cross_engine(tmpdir, w_engine, r_engine, capsys):
+    """Test the --engine parameter vs. files written by another engine"""
+    os.chdir(str(tmpdir))
+    b = a.copy(deep=True)
+    b.d1[0] += 10
+    a.to_netcdf("a.nc", engine=w_engine)
+    b.to_netcdf("b.nc", engine=w_engine)
+
+    exit_code = main(["--engine", r_engine, "a.nc", "b.nc"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[data_vars][d1][x=10]: 1 != 11 (abs: 1.0e+01, rel: 1.0e+01)\n"
+        "Found 1 differences\n",
+    )
+
+
+@pytest.mark.parametrize(
+    "w_engine",
+    [
+        pytest.param("netcdf4", marks=[requires_netcdf4]),
+        pytest.param("h5netcdf", marks=[requires_h5netcdf]),
+    ],
+)
+@requires_scipy
+def test_cross_engine_scipy(tmpdir, w_engine):
+    """Test the --engine scipy parameter vs. files written by NetCDF4 engines"""
+    os.chdir(str(tmpdir))
+    b = a.copy(deep=True)
+    b.d1[0] += 10
+    a.to_netcdf("a.nc", engine=w_engine)
+    b.to_netcdf("b.nc", engine=w_engine)
+
+    with pytest.raises(TypeError, match="not a valid NetCDF 3 file"):
+        main(["--engine", "scipy", "a.nc", "b.nc"])
+
+
+@requires_h5netcdf
+def test_compression(tmpdir, capsys):
+    os.chdir(str(tmpdir))
+    b = a.copy(deep=True)
+    b.d1[0] += 10
+    a.to_netcdf("a.nc", engine="h5netcdf", encoding={"d1": {"compression": "lzf"}})
+    b.to_netcdf("b.nc", engine="h5netcdf")
+
+    # Differences in compression are not picked up
+    exit_code = main(["a.nc", "b.nc", "--engine", "h5netcdf"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[data_vars][d1][x=10]: 1 != 11 (abs: 1.0e+01, rel: 1.0e+01)\n"
+        "Found 1 differences\n",
+    )
+
+
+@pytest.mark.skipif(has_netcdf, reason="Found a NetCDF engine")
+def test_no_engine(tmpdir):
+    os.chdir(str(tmpdir))
+    open("a.nc", "w").close()
+    open("b.nc", "w").close()
+
+    with pytest.raises(ValueError, match="no currently installed IO backends"):
+        main(["a.nc", "b.nc"])

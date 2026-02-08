@@ -144,6 +144,7 @@ xarray = "*"
 
 [tool.pixi.feature.optional.dependencies]
 dask-core = "*"
+netcdf4 = "*" # NetCDF engine
 scipy = "*" # NetCDF engine
 h5netcdf = "*" # NetCDF engine
 
@@ -215,9 +216,10 @@ pandas = "=1.5"
 xarray = "=2023.8.0"
 # Optional dependencies
 dask-core = "=2022.7.0"
+netcdf4 = "=1.6" # NetCDF engine
 scipy = "=1.8" # NetCDF engine
 h5netcdf = "=1.0" # NetCDF engine
-h5py = "=3.6"
+h5py = "=3.6" # h5netcdf dependency
 
 [tool.pixi.feature.upstream.dependencies]
 python = "=3.14"

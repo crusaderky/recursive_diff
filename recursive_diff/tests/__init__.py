@@ -18,7 +18,7 @@ def _import_or_skip(modname: str) -> tuple:
 
         has_module (bool)
             True if the module is available and >= minversion
-        requires_module (decorator)
+        requires_module (pytest mark)
             Tests decorated with it will only run if the module is available
             and >= minversion
     """
@@ -28,13 +28,13 @@ def _import_or_skip(modname: str) -> tuple:
     except ImportError:
         has = False
 
-    func = pytest.mark.skipif(not has, reason=f"requires {modname}")
-    return has, func
+    mark = pytest.mark.skipif(not has, reason=f"requires {modname}")
+    return has, mark
 
 
 has_dask, requires_dask = _import_or_skip("dask")
 has_h5netcdf, requires_h5netcdf = _import_or_skip("h5netcdf")
-has_netcdf4, requires_netcdf4 = _import_or_skip("netcdf4")
+has_netcdf4, requires_netcdf4 = _import_or_skip("netCDF4")
 has_scipy, requires_scipy = _import_or_skip("scipy")
 
 has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
