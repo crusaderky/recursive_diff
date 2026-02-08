@@ -6,18 +6,20 @@ What's New
 v1.4.0 (unreleased)
 -------------------
 - Dropped support for pynio, cfgrib, and pseudonetcdf NetCDF engines
-- `ncdiff` CLI tool has been deprecated in favor of the new `recursive-diff`.
-- `recursive-diff` supports multiple wildcard patterns, e.g.
-  `recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2` or
-  `recursive-diff -r dir1 dir2 -m "foo*.nc" "bar*.nc"`
+- The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``.
+- The ``recursive-diff`` CLI tool supports multiple wildcard patterns, e.g.::
+
+    recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2
 
   .. note::
 
-     This means that the syntax `ncdiff -r -m "foo*.nc" dir1 dir2` is valid, while
-     `recursive-diff -r -m "foo*.nc" dir1 dir2` is not. You should either use
-     `recursive-diff -r dir1 dir2 -m "foo*.nc"` or  `recursive-diff -r -m "foo*.nc"
-     "bar*.nc" -- dir1 dir2` (note the `--` to separate the patterns from the
-     directories).
+     This new feature implies a syntax difference between the legacy ``ncdiff`` CLI tool
+     and the new ``recursive-diff``::
+
+       ncdiff -r -m "foo*.nc" dir1 dir2  # valid
+       recursive-diff -r -m "foo*.nc" dir1 dir2  # NOT VALID
+       recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2  # valid (note the --)
+       recursive-diff -r dir1 dir2 -m "foo*.nc"  # valid
 
 
 v1.3.0 (2025-10-14)

@@ -4,9 +4,21 @@ Installation
 Required dependencies
 ---------------------
 
-- `xarray <http://xarray.pydata.org/>`__
-- For the :doc:`cli`: one or more NetCDF engines;
-  see :func:`xarray.open_dataset`
+- `Xarray <http://xarray.pydata.org/>`__
+
+
+Optional dependencies
+---------------------
+
+recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__.
+
+Dependencies needed for the :doc:`cli`:
+
+- `Dask <https://dask.org/>`__
+- To read NetCDF v3: `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
+  or `scipy <https://www.scipy.org/>`__
+- To read NetCDF v4: `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
+  or `h5netcdf <https://h5netcdf.org/>`__
 
 
 Installing with conda

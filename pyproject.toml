@@ -209,6 +209,8 @@ python = "=3.14"
 [tool.pixi.feature.nogil.dependencies]
 python-freethreading = "=3.14"
 pytest-run-parallel = "*"
+scipy = "*" # NetCDF engine
+dask-core = "*" # CLI tool dependency
 
 [tool.pixi.feature.mindeps.dependencies]
 python = "=3.9"
