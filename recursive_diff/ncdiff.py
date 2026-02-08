@@ -54,8 +54,11 @@ def argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--match",
         "-m",
-        default="**/*.nc",
-        help="Bash wildcard match for file names when using --recursive "
+        nargs="+",
+        dest="patterns",
+        metavar="PATTERN",
+        default=["**/*.nc"],
+        help="Bash wildcard patterns for file names when using --recursive "
         "(default: **/*.nc)",
     )
 
@@ -117,25 +120,27 @@ def open_netcdf(fname: str, engine: str | None = None) -> xarray.Dataset:
 
 
 def recursive_open_netcdf(
-    path: str, match: str, engine: str | None = None
+    path: str, patterns: list[str], engine: str | None = None
 ) -> dict[str, xarray.Dataset]:
     """Recursively find and open all NetCDF files that exist in any of
     the given paths.
 
     :param str path:
         Root directory to search into
-    :param str match:
-        Glob match relative to path
+    :param list[str] patterns:
+        One or more glob patterns relative to path
     :param str engine:
         NetCDF engine (see :func:`xarray.open_dataset`)
     :returns:
         dict of {relative file name: dataset}
     """
+    fnames = set()
     # TODO use glob(root_dir=path) (requires Python >=3.10)
     cwd = os.getcwd()
     os.chdir(path)
     try:
-        fnames = glob.glob(match, recursive=True)
+        for pattern in patterns:
+            fnames.update(glob.glob(pattern, recursive=True))
     finally:
         os.chdir(cwd)
 
@@ -143,7 +148,8 @@ def recursive_open_netcdf(
     # to get a prettier logging message on the file being opened
     logging.info("Opening %d NetCDF stores from %s", len(fnames), path)
     return {
-        fname: open_netcdf(os.path.join(path, fname), engine=engine) for fname in fnames
+        fname: open_netcdf(os.path.join(path, fname), engine=engine)
+        for fname in sorted(fnames)
     }
 
 
@@ -172,8 +178,8 @@ def main(argv: list[str] | None = None) -> int:
     lhs: xarray.Dataset | dict[str, xarray.Dataset]
     rhs: xarray.Dataset | dict[str, xarray.Dataset]
     if args.recursive:
-        lhs = recursive_open_netcdf(args.lhs, args.match, engine=args.engine)
-        rhs = recursive_open_netcdf(args.rhs, args.match, engine=args.engine)
+        lhs = recursive_open_netcdf(args.lhs, args.patterns, engine=args.engine)
+        rhs = recursive_open_netcdf(args.rhs, args.patterns, engine=args.engine)
     else:
         lhs = open_netcdf(args.lhs, engine=args.engine)
         rhs = open_netcdf(args.rhs, engine=args.engine)
