@@ -20,6 +20,15 @@ pytestmark = [
     )
 ]
 
+
+@pytest.fixture(autouse=True)
+def in_tmp_path(tmp_path):
+    """Run each test in a temporary directory"""
+    os.chdir(tmp_path)
+    os.mkdir("lhs")
+    os.mkdir("rhs")
+
+
 a = xarray.Dataset(
     data_vars={
         "d1": ("x", [1, 2]),
@@ -46,23 +55,20 @@ def assert_stdout(capsys, expect):
 @pytest.mark.parametrize(
     "argv",
     [
-        ["d1/a.nc", "d1/b.nc"],
-        ["-q", "d1/a.nc", "d1/b.nc"],
-        ["-b", "d1/a.nc", "d1/b.nc"],
-        ["-r", "d1", "d2"],
-        ["-b", "-r", "d1", "d2"],
-        ["-r", "-m", "*/a.nc", "--", "d1", "d2"],
-        ["-r", "d1", "d2", "-m", "*/a.nc"],
+        ["lhs/a.nc", "lhs/b.nc"],
+        ["-q", "lhs/a.nc", "lhs/b.nc"],
+        ["-b", "lhs/a.nc", "lhs/b.nc"],
+        ["-r", "lhs", "rhs"],
+        ["-b", "-r", "lhs", "rhs"],
+        ["-r", "-m", "*/a.nc", "--", "lhs", "rhs"],
+        ["-r", "lhs", "rhs", "-m", "*/a.nc"],
     ],
 )
-def test_identical(tmpdir, capsys, argv):
-    os.chdir(str(tmpdir))
-    os.mkdir("d1")
-    os.mkdir("d2")
-    a.to_netcdf("d1/a.nc")
-    a.to_netcdf("d1/b.nc")
-    a.to_netcdf("d2/a.nc")
-    a.to_netcdf("d2/b.nc")
+def test_identical(capsys, argv):
+    a.to_netcdf("lhs/a.nc")
+    a.to_netcdf("lhs/b.nc")
+    a.to_netcdf("rhs/a.nc")
+    a.to_netcdf("rhs/b.nc")
 
     exit_code = main(argv)
     assert exit_code == 0
@@ -116,17 +122,17 @@ def test_identical(tmpdir, capsys, argv):
         ),
     ],
 )
-def test_singlefile(tmpdir, capsys, argv, out):
+def test_singlefile(capsys, argv, out):
     b = a.copy(deep=True)
     b.d1[0] += 10
     b.d3[0] += 0.01
     b.attrs["a1"] = 3
     b.attrs["a3"] = 4
     b.x2[0] += 10
-    a.to_netcdf(f"{tmpdir}/a.nc")
-    b.to_netcdf(f"{tmpdir}/b.nc")
+    a.to_netcdf("a.nc")
+    b.to_netcdf("b.nc")
 
-    exit_code = main([*argv, f"{tmpdir}/a.nc", f"{tmpdir}/b.nc"])
+    exit_code = main([*argv, "a.nc", "b.nc"])
     assert exit_code == 1
     assert_stdout(capsys, out)
 
@@ -178,21 +184,19 @@ def test_singlefile(tmpdir, capsys, argv, out):
         ),
     ],
 )
-def test_recursive(tmpdir, capsys, argv, out):
-    os.chdir(str(tmpdir))
-
+def test_recursive(capsys, argv, out):
     a_lhs = a
     b_lhs = a_lhs.copy(deep=True)
     b_lhs.coords["x"] = [30, 40]
-    os.makedirs(f"{tmpdir}/lhs/subdir")
-    a_lhs.to_netcdf(f"{tmpdir}/lhs/subdir/a.nc")
-    b_lhs.to_netcdf(f"{tmpdir}/lhs/b.nc")
+    os.mkdir("lhs/subdir")
+    a_lhs.to_netcdf("lhs/subdir/a.nc")
+    b_lhs.to_netcdf("lhs/b.nc")
 
     a_rhs = a.copy(deep=True)
     a_rhs.d1[0] -= 10
     b_rhs = a_rhs.copy(deep=True)
     b_rhs.coords["x"] = [30, 40]
-    os.makedirs("rhs/subdir")
+    os.mkdir("rhs/subdir")
     a_rhs.to_netcdf("rhs/subdir/a.nc")
     b_rhs.to_netcdf("rhs/b.nc")
 
@@ -212,9 +216,8 @@ def test_recursive(tmpdir, capsys, argv, out):
         pytest.param("scipy", marks=[requires_scipy]),
     ],
 )
-def test_engine(tmpdir, capsys, engine):
+def test_engine(capsys, engine):
     """Test the --engine parameter"""
-    os.chdir(str(tmpdir))
     b = a.copy(deep=True)
     b.d1[0] += 10
     a.to_netcdf("a.nc", engine=engine)
@@ -241,9 +244,8 @@ def test_engine(tmpdir, capsys, engine):
         ),
     ],
 )
-def test_cross_engine(tmpdir, w_engine, r_engine, capsys):
+def test_cross_engine(w_engine, r_engine, capsys):
     """Test the --engine parameter vs. files written by another engine"""
-    os.chdir(str(tmpdir))
     b = a.copy(deep=True)
     b.d1[0] += 10
     a.to_netcdf("a.nc", engine=w_engine)
@@ -266,9 +268,8 @@ def test_cross_engine(tmpdir, w_engine, r_engine, capsys):
     ],
 )
 @requires_scipy
-def test_cross_engine_scipy(tmpdir, w_engine):
+def test_cross_engine_scipy(w_engine):
     """Test the --engine scipy parameter vs. files written by NetCDF4 engines"""
-    os.chdir(str(tmpdir))
     b = a.copy(deep=True)
     b.d1[0] += 10
     a.to_netcdf("a.nc", engine=w_engine)
@@ -279,8 +280,7 @@ def test_cross_engine_scipy(tmpdir, w_engine):
 
 
 @requires_h5netcdf
-def test_compression(tmpdir, capsys):
-    os.chdir(str(tmpdir))
+def test_compression(capsys):
     b = a.copy(deep=True)
     b.d1[0] += 10
     a.to_netcdf("a.nc", engine="h5netcdf", encoding={"d1": {"compression": "lzf"}})
@@ -297,8 +297,7 @@ def test_compression(tmpdir, capsys):
 
 
 @pytest.mark.skipif(has_netcdf, reason="Found a NetCDF engine")
-def test_no_engine(tmpdir):
-    os.chdir(str(tmpdir))
+def test_no_engine():
     open("a.nc", "w").close()
     open("b.nc", "w").close()
 
@@ -307,17 +306,13 @@ def test_no_engine(tmpdir):
 
 
 @requires_netcdf
-def test_ncdiff(tmpdir, capsys):
+def test_ncdiff(capsys):
     """DEPRECATED ncdiff tool: -m arg accepts only one parameter, which
     allows for -m PATTERN DIR1 DIR2
     """
-    os.chdir(str(tmpdir))
-
     a_lhs = a
-    os.makedirs(f"{tmpdir}/lhs")
-    os.makedirs(f"{tmpdir}/rhs")
-    a_lhs.to_netcdf(f"{tmpdir}/lhs/a.nc")
-    a_lhs.to_netcdf(f"{tmpdir}/lhs/b.nc")
+    a_lhs.to_netcdf("lhs/a.nc")
+    a_lhs.to_netcdf("lhs/b.nc")
     a_rhs = a.copy(deep=True)
     a_rhs.d1[0] -= 10
     a_rhs.to_netcdf("rhs/a.nc")
