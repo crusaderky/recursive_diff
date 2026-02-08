@@ -315,7 +315,7 @@ def test_ncdiff(tmpdir, capsys):
 
     a_lhs = a
     os.makedirs(f"{tmpdir}/lhs")
-    os.makedirs(f"{tmpdir}/rhs")   
+    os.makedirs(f"{tmpdir}/rhs")
     a_lhs.to_netcdf(f"{tmpdir}/lhs/a.nc")
     a_lhs.to_netcdf(f"{tmpdir}/lhs/b.nc")
     a_rhs = a.copy(deep=True)
