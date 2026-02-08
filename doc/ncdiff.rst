@@ -7,36 +7,37 @@ Usage
 -----
 ::
 
-    usage: ncdiff [-h] [--engine {netcdf4,scipy,pydap,h5netcdf}] [--quiet]
-                  [--recursive] [--match MATCH] [--rtol RTOL] [--atol ATOL]
-                  [--brief_dims DIM [DIM ...] | --brief]
-                  lhs rhs
+  usage: ncdiff [-h] [--engine {netcdf4,scipy,pydap,h5netcdf}] [--quiet]
+                [--recursive] [--match PATTERN [PATTERN ...]]
+                [--rtol RTOL] [--atol ATOL] [--brief_dims DIM [DIM ...] | --brief]
+                lhs rhs
 
-    Compare either two NetCDF files or all NetCDF files in two directories.
+  Compare either two NetCDF files or all NetCDF files in two directories.
 
-    positional arguments:
-      lhs                   Left-hand-side NetCDF file or (if --recursive) directory
-      rhs                   Right-hand-side NetCDF file or (if --recursive) directory
+  positional arguments:
+    lhs                   Left-hand-side NetCDF file or (if --recursive) directory
+    rhs                   Right-hand-side NetCDF file or (if --recursive) directory
 
-    options:
-      -h, --help            show this help message and exit
-      --engine, -e {netcdf4,scipy,pydap,h5netcdf}
-                            NeCDF engine (may require additional modules)
-      --quiet, -q           Suppress logging
-      --recursive, -r       Compare all NetCDF files with matching names in two directories
-      --match, -m MATCH     Bash wildcard match for file names when using --recursive (default: **/*.nc)
-      --rtol RTOL           Relative comparison tolerance (default: 1e-9)
-      --atol ATOL           Absolute comparison tolerance (default: 0)
-      --brief_dims DIM [DIM ...]
-                            Just count differences along one or more dimensions instead of printing them out individually
-      --brief, -b           Just count differences for every variable instead of printing them out individually
+  options:
+    -h, --help            show this help message and exit
+    --engine, -e {netcdf4,scipy,pydap,h5netcdf}
+                          NeCDF engine (may require additional modules)
+    --quiet, -q           Suppress logging
+    --recursive, -r       Compare all NetCDF files with matching names in two directories
+    --match, -m PATTERN [PATTERN ...]
+                          Bash wildcard patterns for file names when using --recursive (default: **/*.nc)
+    --rtol RTOL           Relative comparison tolerance (default: 1e-9)
+    --atol ATOL           Absolute comparison tolerance (default: 0)
+    --brief_dims DIM [DIM ...]
+                          Just count differences along one or more dimensions instead of printing them out individually
+    --brief, -b           Just count differences for every variable instead of printing them out individually
 
-    Examples:
+  Examples:
 
-    Compare two NetCDF files:
-      ncdiff a.nc b.nc
-    Compare all NetCDF files with identical names in two directories:
-      ncdiff -r dir1 dir2
+  Compare two NetCDF files:
+    ncdiff a.nc b.nc
+  Compare all NetCDF files with identical names in two directories:
+    ncdiff -r dir1 dir2
 
 
 Chunking and RAM design

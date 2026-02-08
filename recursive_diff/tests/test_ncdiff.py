@@ -50,7 +50,8 @@ def assert_stdout(capsys, expect):
         ["-b", "d1/a.nc", "d1/b.nc"],
         ["-r", "d1", "d2"],
         ["-b", "-r", "d1", "d2"],
-        ["-r", "-m", "*/a.nc", "d1", "d2"],
+        ["-r", "-m", "*/a.nc", "--", "d1", "d2"],
+        ["-r", "d1", "d2", "-m", "*/a.nc"],
     ],
 )
 def test_identical(tmpdir, capsys, argv):
@@ -133,9 +134,12 @@ def test_singlefile(tmpdir, capsys, argv, out):
 @pytest.mark.parametrize(
     "argv,out",
     [
+        # no differences
         (["-r", "lhs", "lhs"], "Found 0 differences\n"),
+        # pattern matches nothing
         (["-r", "lhs", "rhs", "-m", "notexist"], "Found 0 differences\n"),
         (
+            # default pattern
             ["-r", "lhs", "rhs"],
             "[b.nc][data_vars][d1][x=30]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
             "[" + os.path.join("subdir", "a.nc") + "][data_vars][d1][x=10]: 1 != -9 "
@@ -143,11 +147,29 @@ def test_singlefile(tmpdir, capsys, argv, out):
             "Found 2 differences\n",
         ),
         (
+            # multiple patterns
+            ["-r", "lhs", "rhs", "-m", "**/a.nc", "*.nc"],
+            "[b.nc][data_vars][d1][x=30]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
+            "[" + os.path.join("subdir", "a.nc") + "][data_vars][d1][x=10]: 1 != -9 "
+            "(abs: -1.0e+01, rel: -1.0e+01)\n"
+            "Found 2 differences\n",
+        ),
+        (
+            # multiple overlapping patterns
+            ["-r", "lhs", "rhs", "-m", "**/*.nc", "*.nc"],
+            "[b.nc][data_vars][d1][x=30]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
+            "[" + os.path.join("subdir", "a.nc") + "][data_vars][d1][x=10]: 1 != -9 "
+            "(abs: -1.0e+01, rel: -1.0e+01)\n"
+            "Found 2 differences\n",
+        ),
+        (
+            # pattern matches only b
             ["-r", "lhs", "rhs", "-m", "*.nc"],
             "[b.nc][data_vars][d1][x=30]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
             "Found 1 differences\n",
         ),
         (
+            # pattern matches only a
             ["-r", "lhs", "rhs", "-m", "**/a.nc"],
             "[" + os.path.join("subdir", "a.nc") + "][data_vars][d1][x=10]: 1 != -9 "
             "(abs: -1.0e+01, rel: -1.0e+01)\n"

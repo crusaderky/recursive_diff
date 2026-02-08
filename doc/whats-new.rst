@@ -6,6 +6,14 @@ What's New
 v1.4.0 (unreleased)
 -------------------
 - Dropped support for pynio, cfgrib, and pseudonetcdf NetCDF engines
+- Support for multiple `ncdiff` wildcard patterns, e.g.
+  `ncdiff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2` or
+  `ncdiff -r dir1 dir2 -m "foo*.nc" "bar*.nc"`
+
+  .. note::
+
+     This breaks backwards compatibility with the syntax
+     `ncdiff -r -m "foo*.nc" dir1 dir2` (note the lack of `--`).
 
 
 v1.3.0 (2025-10-14)
