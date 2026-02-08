@@ -41,9 +41,6 @@ def argparser() -> argparse.ArgumentParser:
             "scipy",
             "pydap",
             "h5netcdf",
-            "pynio",
-            "cfgrib",
-            "pseudonetcdf",
         ],
     )
     parser.add_argument("--quiet", "-q", action="store_true", help="Suppress logging")
@@ -134,6 +131,7 @@ def recursive_open_netcdf(
     :returns:
         dict of {relative file name: dataset}
     """
+    # TODO use glob(root_dir=path) (requires Python >=3.10)
     cwd = os.getcwd()
     os.chdir(path)
     try:

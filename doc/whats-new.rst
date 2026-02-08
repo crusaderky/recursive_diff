@@ -5,6 +5,7 @@ What's New
 
 v1.4.0 (unreleased)
 -------------------
+- Dropped support for pynio, cfgrib, and pseudonetcdf NetCDF engines
 
 
 v1.3.0 (2025-10-14)
