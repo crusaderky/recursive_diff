@@ -14,11 +14,10 @@ recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__.
 
 Dependencies needed for the :doc:`cli`:
 
-- `Dask <https://dask.org/>`__
-- To read NetCDF v3: `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
-  or `scipy <https://www.scipy.org/>`__
-- To read NetCDF v4: `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
-  or `h5netcdf <https://h5netcdf.org/>`__
+- **netCDF v3:** `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
+  or `scipy <https://www.scipy.org/>`__, plus `Dask <https://dask.org/>`__
+- **netCDF v4:** `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
+  or `h5netcdf <https://h5netcdf.org/>`__, plus `Dask <https://dask.org/>`__
 
 
 Installing with conda

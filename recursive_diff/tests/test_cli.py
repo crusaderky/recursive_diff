@@ -201,6 +201,7 @@ def test_recursive(capsys, argv, out):
     assert_stdout(capsys, out)
 
 
+@requires_netcdf
 @pytest.mark.parametrize(
     "engine",
     [
@@ -225,6 +226,7 @@ def test_engine(capsys, engine):
     )
 
 
+@requires_netcdf
 @pytest.mark.parametrize(
     "w_engine,r_engine",
     [
@@ -253,6 +255,7 @@ def test_cross_engine(w_engine, r_engine, capsys):
     )
 
 
+@requires_netcdf
 @pytest.mark.parametrize(
     "w_engine",
     [
@@ -272,10 +275,12 @@ def test_cross_engine_scipy(w_engine):
         main(["--engine", "scipy", "a.nc", "b.nc"])
 
 
+@requires_netcdf
 @requires_h5netcdf
 def test_compression(capsys):
     b = a.copy(deep=True)
     b.d1[0] += 10
+    # h5netcdf is the only engine that supports lzf
     a.to_netcdf("a.nc", engine="h5netcdf", encoding={"d1": {"compression": "lzf"}})
     b.to_netcdf("b.nc", engine="h5netcdf")
 

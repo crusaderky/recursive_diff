@@ -42,7 +42,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     has_netcdf4, requires_netcdf4 = _import_or_skip("netCDF4")
 
-has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
+has_netcdf = (has_h5netcdf or has_netcdf4 or has_scipy) and has_dask
 requires_netcdf = pytest.mark.skipif(not has_netcdf, reason="No netCDF engine found")
 
 NUMPY_GE_126 = Version(np.__version__) >= Version("1.26")
