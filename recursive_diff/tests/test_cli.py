@@ -13,13 +13,6 @@ from recursive_diff.tests import (
     requires_scipy,
 )
 
-# Suppress warning emitted by NetCDF4 for all versions of NumPy
-pytestmark = [
-    pytest.mark.filterwarnings(
-        "ignore:numpy.ndarry size changed:RuntimeWarning:netCDF4"
-    )
-]
-
 
 @pytest.fixture(autouse=True)
 def in_tmp_path(tmp_path):
@@ -269,7 +262,7 @@ def test_cross_engine(w_engine, r_engine, capsys):
 )
 @requires_scipy
 def test_cross_engine_scipy(w_engine):
-    """Test the --engine scipy parameter vs. files written by NetCDF4 engines"""
+    """Test the --engine scipy parameter vs. files written by netCDF4 engines"""
     b = a.copy(deep=True)
     b.d1[0] += 10
     a.to_netcdf("a.nc", engine=w_engine)
@@ -296,7 +289,7 @@ def test_compression(capsys):
     )
 
 
-@pytest.mark.skipif(has_netcdf, reason="Found a NetCDF engine")
+@pytest.mark.skipif(has_netcdf, reason="Found a netCDF engine")
 def test_no_engine():
     open("a.nc", "w").close()
     open("b.nc", "w").close()

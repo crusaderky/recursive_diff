@@ -5,7 +5,7 @@ What's New
 
 v1.4.0 (unreleased)
 -------------------
-- Dropped support for pynio, cfgrib, and pseudonetcdf NetCDF engines
+- Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
 - The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``.
 - The ``recursive-diff`` CLI tool supports multiple wildcard patterns, e.g.::
 

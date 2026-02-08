@@ -1,6 +1,6 @@
 CLI tool
 ========
-Compare either two NetCDF files or all NetCDF files in two directories.
+Compare either two netCDF files or all netCDF files in two directories.
 
 
 Usage
@@ -13,18 +13,18 @@ Usage
                         [--brief_dims DIM [DIM ...] | --brief]
                         lhs rhs
 
-  Compare either two NetCDF files or all NetCDF files in two directories.
+  Compare either two netCDF files or all netCDF files in two directories.
 
   positional arguments:
-    lhs                   Left-hand-side NetCDF file or (if --recursive) directory
-    rhs                   Right-hand-side NetCDF file or (if --recursive) directory
+    lhs                   Left-hand-side netCDF file or (if --recursive) directory
+    rhs                   Right-hand-side netCDF file or (if --recursive) directory
 
   options:
     -h, --help            show this help message and exit
     --engine, -e {netcdf4,scipy,pydap,h5netcdf}
                           NeCDF engine (may require additional modules)
     --quiet, -q           Suppress logging
-    --recursive, -r       Compare all NetCDF files with matching names in two directories
+    --recursive, -r       Compare all netCDF files with matching names in two directories
     --match, -m PATTERN [PATTERN ...]
                           Bash wildcard patterns for file names when using --recursive
                           (default: **/*.nc)
@@ -36,9 +36,9 @@ Usage
 
   Examples:
 
-  Compare two NetCDF files:
+  Compare two netCDF files:
     recursive-diff a.nc b.nc
-  Compare all NetCDF files with identical names in two directories:
+  Compare all netCDF files with identical names in two directories:
     recursive-diff -r dir1 dir2
 
 
@@ -62,6 +62,6 @@ This has the big advantage of simplicity, but a few disadvantages:
 
 Further limitations
 -------------------
-- Won't compare NetCDF settings, e.g. store version, compression,
+- Won't compare netCDF settings, e.g. store version, compression,
   chunking, etc.
 - Doesn't support indices with duplicate elements

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -34,11 +35,15 @@ def _import_or_skip(modname: str) -> tuple:
 
 has_dask, requires_dask = _import_or_skip("dask")
 has_h5netcdf, requires_h5netcdf = _import_or_skip("h5netcdf")
-has_netcdf4, requires_netcdf4 = _import_or_skip("netCDF4")
 has_scipy, requires_scipy = _import_or_skip("scipy")
 
+# Suppress `numpy.ndarry size changed` warning emitted by netCDF4 on import
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    has_netcdf4, requires_netcdf4 = _import_or_skip("netCDF4")
+
 has_netcdf = has_h5netcdf or has_netcdf4 or has_scipy
-requires_netcdf = pytest.mark.skipif(not has_netcdf, reason="No NetCDF engine found")
+requires_netcdf = pytest.mark.skipif(not has_netcdf, reason="No netCDF engine found")
 
 NUMPY_GE_126 = Version(np.__version__) >= Version("1.26")
 PANDAS_GE_200 = Version(pd.__version__) >= Version("2.0")

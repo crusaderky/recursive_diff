@@ -1,4 +1,4 @@
-"""Compare either two NetCDF files or all NetCDF files in two directories.
+"""Compare either two netCDF files or all netCDF files in two directories.
 
 See :doc:`bin/recursive-diff`
 """
@@ -22,12 +22,12 @@ LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.ArgumentParser:
     """Return precompiled ArgumentParser"""
     parser = argparse.ArgumentParser(
-        description="Compare either two NetCDF files or all NetCDF files in "
+        description="Compare either two netCDF files or all netCDF files in "
         "two directories.",
         epilog="Examples:\n\n"
-        "Compare two NetCDF files:\n"
+        "Compare two netCDF files:\n"
         f"  {cli_name} a.nc b.nc\n"
-        "Compare all NetCDF files with identical names in two "
+        "Compare all netCDF files with identical names in two "
         "directories:\n"
         f"  {cli_name} -r dir1 dir2\n",
         formatter_class=argparse.RawTextHelpFormatter,
@@ -36,7 +36,7 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
     parser.add_argument(
         "--engine",
         "-e",
-        help="NeCDF engine (may require additional modules)",
+        help="netCDF engine (may require additional modules)",
         choices=[
             "netcdf4",
             "scipy",
@@ -50,7 +50,7 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
         "--recursive",
         "-r",
         action="store_true",
-        help="Compare all NetCDF files with matching names in two directories",
+        help="Compare all netCDF files with matching names in two directories",
     )
 
     if cli_name == "ncdiff":
@@ -108,10 +108,10 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
     )
 
     parser.add_argument(
-        "lhs", help="Left-hand-side NetCDF file or (if --recursive) directory"
+        "lhs", help="Left-hand-side netCDF file or (if --recursive) directory"
     )
     parser.add_argument(
-        "rhs", help="Right-hand-side NetCDF file or (if --recursive) directory"
+        "rhs", help="Right-hand-side netCDF file or (if --recursive) directory"
     )
 
     return parser
