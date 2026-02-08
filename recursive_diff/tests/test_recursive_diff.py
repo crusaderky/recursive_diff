@@ -874,6 +874,30 @@ def test_dask(chunk_lhs, chunk_rhs):
     check(lhs, rhs, "[data][x=2]: c != d")
 
 
+@requires_dask
+def test_dask_discards_data():
+    """Test that chunked Dask datasets are loaded into memory and then
+    discarded, without caching them in place with .load() or .persist()
+    """
+    import dask.array as da  # noqa: PLC0415
+
+    allow = True
+
+    def f():
+        assert allow
+        return np.array([1, 2])
+
+    a = xarray.DataArray(da.Array({("a", 0): (f,)}, "a", chunks=[(2,)], dtype="int"))
+    b = xarray.DataArray([1, 2])
+    b = a.compute()
+    check(a, b, "")
+
+    # Test that the graph is computed again
+    allow = False
+    with pytest.raises(AssertionError):
+        a.load()
+
+
 def test_recursion():
     lhs = []
     lhs.append(lhs)

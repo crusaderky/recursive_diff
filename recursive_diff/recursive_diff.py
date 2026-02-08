@@ -361,14 +361,14 @@ def _recursive_diff(
             pass
 
         elif lhs.dims:
-            # Load the entire objects into RAM. When parsing huge disk-backed
-            # datasets, e.g. with landg.bin.ncdiff, you want to do this at the
-            # very last possible moment. After this, we'll do:
+            # Load the entire objects into RAM. When parsing huge disk-backed datasets,
+            # you want to do this at the very last possible moment. After this, we'll
+            # do:
             # - alignment, which is potentially very expensive with dask
             # - Extract differences (simplified code):
-            #     diff = lhs != rhs
-            #     lhs = lhs[lhs != rhs].compute()
-            #     rhs = rhs[lhs != rhs].compute()
+            #     differs = lhs != rhs
+            #     lhs = lhs[differs].compute()
+            #     rhs = rhs[differs].compute()
             #   The above 3 lines, if lhs and rhs were dask-backed, would
             #   effectively load the arrays 3 times each.
             lhs, rhs = dask.compute(lhs, rhs)

@@ -145,9 +145,12 @@ xarray = "*"
 
 [tool.pixi.feature.optional.dependencies]
 dask-core = "*"
+msgpack-python = "*"
+PyYAML = "*"
 netcdf4 = "*" # netCDF engine
 scipy = "*" # netCDF engine
 h5netcdf = "*" # netCDF engine
+zarr = "*"
 
 [tool.pixi.feature.lint.dependencies]
 lefthook = "*"
@@ -163,6 +166,7 @@ validate-pyproject = "*"
 sphinx-lint = "*"
 # mypy check dependencies
 dask-core = "*"
+types-PyYAML = "*"
 
 [tool.pixi.feature.lint.tasks]
 install-git-hooks = { cmd = "lefthook install", description = "Install pre-commit hooks" }
@@ -223,6 +227,9 @@ netcdf4 = "=1.6" # netCDF engine
 scipy = "=1.8" # netCDF engine
 h5netcdf = "=1.0" # netCDF engine
 h5py = "=3.6" # h5netcdf dependency
+msgpack-python = "=1.0"
+PyYAML = "=5.4"
+zarr = "=2.15"
 
 [tool.pixi.feature.upstream.dependencies]
 python = "=3.14"
@@ -233,6 +240,7 @@ pandas = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/s
 scipy = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 h5py = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 xarray = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+zarr = { index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 dask = { git = "https://github.com/dask/dask.git" }
 h5netcdf = { git = "https://github.com/h5netcdf/h5netcdf.git" }
 
