@@ -145,9 +145,9 @@ xarray = "*"
 
 [tool.pixi.feature.optional.dependencies]
 dask-core = "*"
-netcdf4 = "*" # NetCDF engine
-scipy = "*" # NetCDF engine
-h5netcdf = "*" # NetCDF engine
+netcdf4 = "*" # netCDF engine
+scipy = "*" # netCDF engine
+h5netcdf = "*" # netCDF engine
 
 [tool.pixi.feature.lint.dependencies]
 lefthook = "*"
@@ -209,7 +209,7 @@ python = "=3.14"
 [tool.pixi.feature.nogil.dependencies]
 python-freethreading = "=3.14"
 pytest-run-parallel = "*"
-scipy = "*" # NetCDF engine
+scipy = "*" # netCDF engine
 dask-core = "*" # CLI tool dependency
 
 [tool.pixi.feature.mindeps.dependencies]
@@ -219,9 +219,9 @@ pandas = "=1.5"
 xarray = "=2023.8.0"
 # Optional dependencies
 dask-core = "=2022.7.0"
-netcdf4 = "=1.6" # NetCDF engine
-scipy = "=1.8" # NetCDF engine
-h5netcdf = "=1.0" # NetCDF engine
+netcdf4 = "=1.6" # netCDF engine
+scipy = "=1.8" # netCDF engine
+h5netcdf = "=1.0" # netCDF engine
 h5py = "=3.6" # h5netcdf dependency
 
 [tool.pixi.feature.upstream.dependencies]
