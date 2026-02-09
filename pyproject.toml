@@ -55,6 +55,11 @@ xfail_strict = true
 python_files = ["test_*.py"]
 testpaths = ["recursive_diff/tests"]
 filterwarnings = ["error"]
+markers = [
+  "slow: test takes a long time to run",
+  # Needed when pytest-run-parallel is not installed
+  "thread_unsafe: always run on a single thread",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -180,6 +185,7 @@ smoke-test = { cmd = "python smoke_test.py", description = "Test import the libr
 [tool.pixi.feature.tests.dependencies]
 pytest = "*"
 pytest-cov = "*"
+psutil = "*"
 
 [tool.pixi.feature.tests.tasks]
 tests = { cmd = "pytest", description = "Run tests" }
