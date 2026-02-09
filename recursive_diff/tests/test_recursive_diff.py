@@ -969,6 +969,8 @@ def test_dask_delayed():
     check(a, b, "[1]: 20 != 21 (abs: 1.0e+00, rel: 5.0e-02)")
     check(a, c, "object type differs: list != tuple")
     check(a, d, "")
+    check(a.compute(), d, "")
+    check(a, d.compute(), "")
 
 
 def test_recursion():
