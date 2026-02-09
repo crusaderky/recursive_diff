@@ -5,8 +5,14 @@ What's New
 
 v1.4.0 (unreleased)
 -------------------
+
+- Added **JSON**, **JSONL**, **MessagePack**, **YAML**, and **Zarr** support
+- New functions :func:`open` and :func:`recursive_open` for opening files from the
+  Python API
 - Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
-- The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``.
+- The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``
+- The ``recursive-diff`` CLI tool, in addition to netCDF, also supports and
+  compares by default JSON, JSONL, MessagePack, YAML, and Zarr files
 - The ``recursive-diff`` CLI tool supports multiple wildcard patterns, e.g.::
 
     recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2

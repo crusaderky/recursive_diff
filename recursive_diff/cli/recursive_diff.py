@@ -1,19 +1,24 @@
-"""Compare either two netCDF files or all netCDF files in two directories.
+"""Compare either two files or all files in two directories.
 
-See :doc:`bin/recursive-diff`
+See :doc:`cli`.
 """
 
 from __future__ import annotations
 
 import argparse
-import glob
 import logging
-import os
 import sys
 from typing import Literal
 
-import xarray
-
+from recursive_diff.files import (
+    DEFAULT_GLOB_PATTERNS,
+    FORMATS,
+    logger,
+    recursive_open,
+)
+from recursive_diff.files import (
+    open as open_,
+)
 from recursive_diff.recursive_diff import recursive_diff
 
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
@@ -22,35 +27,24 @@ LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.ArgumentParser:
     """Return precompiled ArgumentParser"""
     parser = argparse.ArgumentParser(
-        description="Compare either two netCDF files or all netCDF files in "
+        description="Compare either two data files or all data files in "
         "two directories.",
         epilog="Examples:\n\n"
-        "Compare two netCDF files:\n"
-        f"  {cli_name} a.nc b.nc\n"
-        "Compare all netCDF files with identical names in two "
+        "Compare two files:\n"
+        f"  {cli_name} a.json b.json\n"
+        "Compare all files with identical names in two "
         "directories:\n"
         f"  {cli_name} -r dir1 dir2\n",
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    parser.add_argument(
-        "--engine",
-        "-e",
-        help="netCDF engine (may require additional modules)",
-        choices=[
-            "netcdf4",
-            "scipy",
-            "pydap",
-            "h5netcdf",
-        ],
-    )
     parser.add_argument("--quiet", "-q", action="store_true", help="Suppress logging")
 
     parser.add_argument(
         "--recursive",
         "-r",
         action="store_true",
-        help="Compare all netCDF files with matching names in two directories",
+        help="Compare all files with matching names in two directories",
     )
 
     if cli_name == "ncdiff":
@@ -64,6 +58,12 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
             help="Bash wildcard pattern for file names when using --recursive "
             "(default: **/*.nc)",
         )
+        parser.add_argument(
+            "--format",
+            choices=["netcdf"],
+            default=None,
+            help="File format.",
+        )
     else:
         assert cli_name == "recursive-diff"
         parser.add_argument(
@@ -72,9 +72,15 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
             dest="patterns",
             nargs="+",
             metavar="PATTERN",
-            default=["**/*.nc"],
+            default=DEFAULT_GLOB_PATTERNS,
             help="Bash wildcard patterns for file names when using --recursive "
-            "(default: **/*.nc)",
+            f"(default: {' '.join(DEFAULT_GLOB_PATTERNS)})",
+        )
+        parser.add_argument(
+            "--format",
+            choices=FORMATS,
+            default=None,
+            help="File format (default: infer from file extension)",
         )
 
     parser.add_argument(
@@ -108,64 +114,24 @@ def argparser(cli_name: Literal["recursive-diff", "ncdiff"]) -> argparse.Argumen
     )
 
     parser.add_argument(
-        "lhs", help="Left-hand-side netCDF file or (if --recursive) directory"
+        "--engine",
+        "-e",
+        dest="netcdf_engine",
+        help="netCDF engine (default: first available)",
+        choices=[
+            "netcdf4",
+            "h5netcdf",
+            "scipy",
+            "pydap",
+        ],
     )
+
+    parser.add_argument("lhs", help="Left-hand-side file or (if --recursive) directory")
     parser.add_argument(
-        "rhs", help="Right-hand-side netCDF file or (if --recursive) directory"
+        "rhs", help="Right-hand-side file or (if --recursive) directory"
     )
 
     return parser
-
-
-def open_netcdf(fname: str, engine: str | None = None) -> xarray.Dataset:
-    """Open a single NetCDF dataset
-    Read the metadata into RAM. Do not load the actual data.
-
-    :param str fname:
-        path to .nc file
-    :param str engine:
-        NetCDF engine (see :func:`xarray.open_dataset`)
-    :returns:
-        :class:`xarray.Dataset`
-    """
-    # At the moment of writing, h5netcdf is the only engine
-    # supporting LZF compression
-    logging.info("Opening %s", fname)
-    return xarray.open_dataset(fname, engine=engine, chunks={})
-
-
-def recursive_open_netcdf(
-    path: str, patterns: list[str], engine: str | None = None
-) -> dict[str, xarray.Dataset]:
-    """Recursively find and open all NetCDF files that exist in any of
-    the given paths.
-
-    :param str path:
-        Root directory to search into
-    :param list[str] patterns:
-        One or more glob patterns relative to path
-    :param str engine:
-        NetCDF engine (see :func:`xarray.open_dataset`)
-    :returns:
-        dict of {relative file name: dataset}
-    """
-    fnames = set()
-    # TODO use glob(root_dir=path) (requires Python >=3.10)
-    cwd = os.getcwd()
-    os.chdir(path)
-    try:
-        for pattern in patterns:
-            fnames.update(glob.glob(pattern, recursive=True))
-    finally:
-        os.chdir(cwd)
-
-    # We don't invoke open_netcdf() directly inside the pushd context
-    # to get a prettier logging message on the file being opened
-    logging.info("Opening %d NetCDF stores from %s", len(fnames), path)
-    return {
-        fname: open_netcdf(os.path.join(path, fname), engine=engine)
-        for fname in sorted(fnames)
-    }
 
 
 def main(
@@ -199,19 +165,32 @@ def main(
     if argv is None:
         logging.basicConfig(level=loglevel, format=LOGFORMAT)  # pragma: nocover
 
-    # Load metadata of all NetCDF stores
-    # Leave actual data on disk
-    lhs: xarray.Dataset | dict[str, xarray.Dataset]
-    rhs: xarray.Dataset | dict[str, xarray.Dataset]
+    # Load all files. For netCDF and Zarr, if Dask is installed this only loads metadata
+    # into RAM, but not the actual data. For other file formats, this eagerly loads
+    # everything into RAM.
+    lhs: object
+    rhs: object
     if args.recursive:
-        lhs = recursive_open_netcdf(args.lhs, args.patterns, engine=args.engine)
-        rhs = recursive_open_netcdf(args.rhs, args.patterns, engine=args.engine)
+        lhs = recursive_open(
+            args.lhs,
+            args.patterns,
+            format=args.format,
+            netcdf_engine=args.netcdf_engine,
+        )
+        rhs = recursive_open(
+            args.rhs,
+            args.patterns,
+            format=args.format,
+            netcdf_engine=args.netcdf_engine,
+        )
     else:
-        lhs = open_netcdf(args.lhs, engine=args.engine)
-        rhs = open_netcdf(args.rhs, engine=args.engine)
+        lhs = open_(args.lhs, format=args.format, netcdf_engine=args.netcdf_engine)
+        rhs = open_(args.rhs, format=args.format, netcdf_engine=args.netcdf_engine)
 
-    logging.info("Comparing...")
-    # 1. Load a pair of NetCDF variables fully into RAM
+    logger.info("Comparing...")
+    # In case of Dask-backed files (netCDF or Zarr):
+    # 1. Load a pair of files from lhs and rhs fully into RAM
+    #    TODO: We could compare them chunk by chunk instead.
     # 2. compare them
     # 3. print all differences
     # 4. free the RAM

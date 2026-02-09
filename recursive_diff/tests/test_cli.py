@@ -6,11 +6,13 @@ import xarray
 from recursive_diff.cli.ncdiff import main as ncdiff_main
 from recursive_diff.cli.recursive_diff import main
 from recursive_diff.tests import (
+    TO_ZARR_V2,
     has_netcdf,
     requires_h5netcdf,
     requires_netcdf,
     requires_netcdf4,
     requires_scipy,
+    requires_zarr,
 )
 
 
@@ -255,6 +257,25 @@ def test_cross_engine(w_engine, r_engine, capsys):
     )
 
 
+@requires_zarr
+def test_engine_ignored_for_zarr(capsys):
+    """Test that the --engine parameter is not passed to
+    xarray.open_dataset for zarr files
+    """
+    b = a.copy(deep=True)
+    b.d1[0] += 10
+    a.to_zarr("lhs/a.zarr", **TO_ZARR_V2)
+    b.to_zarr("rhs/a.zarr", **TO_ZARR_V2)
+
+    exit_code = main(["--engine", "netcdf4", "-r", "lhs", "rhs"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[a.zarr][data_vars][d1][x=10]: 1 != 11 (abs: 1.0e+01, rel: 1.0e+01)\n"
+        "Found 1 differences\n",
+    )
+
+
 @requires_netcdf
 @pytest.mark.parametrize(
     "w_engine",
@@ -303,10 +324,40 @@ def test_no_engine():
         main(["a.nc", "b.nc"])
 
 
+def test_format(capsys, caplog):
+    """Test the --format parameter"""
+    # Actually jsonl files, but with .json extension
+    with open("lhs/a.json", "w") as f:
+        f.write('{"x": [10, 20]}\n{"x": [30, 40]}\n')
+    with open("rhs/a.json", "w") as f:
+        f.write('{"x": [10, 30]}\n{"x": [30, 40]}\n')
+
+    caplog.set_level("INFO")
+    with pytest.raises(ValueError, match="Extra data"):
+        main(["lhs/a.json", "rhs/a.json"])
+    # Test that the crash was preceded by info on what file was being read
+    assert "Opening lhs/a.json" in caplog.text
+
+    exit_code = main(["--format", "jsonl", "lhs/a.json", "rhs/a.json"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[0][x][1]: 20 != 30 (abs: 1.0e+01, rel: 5.0e-01)\nFound 1 differences\n",
+    )
+
+    exit_code = main(["--format", "jsonl", "-r", "lhs", "rhs"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[a.json][0][x][1]: 20 != 30 (abs: 1.0e+01, rel: 5.0e-01)\n"
+        "Found 1 differences\n",
+    )
+
+
 @requires_netcdf
-def test_ncdiff(capsys):
-    """DEPRECATED ncdiff tool: -m arg accepts only one parameter, which
-    allows for -m PATTERN DIR1 DIR2
+def test_ncdiff_single_match(capsys):
+    """DEPRECATED ncdiff tool differs from recursive-diff:
+    -m arg accepts only one parameter, which allows for -m PATTERN DIR1 DIR2
     """
     a_lhs = a
     a_lhs.to_netcdf("lhs/a.nc")
@@ -322,5 +373,30 @@ def test_ncdiff(capsys):
     assert_stdout(
         capsys,
         "[b.nc][data_vars][d1][x=10]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
+        "Found 1 differences\n",
+    )
+
+
+@requires_netcdf
+def test_ncdiff_matches_only_netcdf(capsys):
+    """DEPRECATED ncdiff tool differs from recursive-diff:
+    default match finds .nc files only
+    """
+    a_lhs = a
+    a_lhs.to_netcdf("lhs/a.nc")
+    with open("lhs/b.json", "w") as f:
+        f.write('{"x": 1}')
+    a_rhs = a.copy(deep=True)
+    a_rhs.d1[0] -= 10
+    a_rhs.to_netcdf("rhs/a.nc")
+    with open("rhs/b.json", "w") as f:
+        f.write('{"x": 2}')
+
+    with pytest.warns(FutureWarning, match="ncdiff is deprecated"):
+        exit_code = ncdiff_main(["-r", "lhs", "rhs"])
+    assert exit_code == 1
+    assert_stdout(
+        capsys,
+        "[a.nc][data_vars][d1][x=10]: 1 != -9 (abs: -1.0e+01, rel: -1.0e+01)\n"
         "Found 1 differences\n",
     )
