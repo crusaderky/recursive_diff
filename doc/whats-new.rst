@@ -27,6 +27,8 @@ v1.4.0 (unreleased)
        recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2  # valid (note the --)
        recursive-diff -r dir1 dir2 -m "foo*.nc"  # valid
 
+- The ``recursive-diff`` CLI tool no longer requires Dask to be installed.
+
 
 v1.3.0 (2025-10-14)
 -------------------

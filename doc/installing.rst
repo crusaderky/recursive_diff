@@ -12,19 +12,18 @@ Required dependencies
 Optional dependencies
 ---------------------
 
-recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__.
+recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__,
+as well as dask delayed objects.
 
 Dependencies needed to open files:
 
 - **MessagePack:** `msgpack <https://github.com/msgpack/msgpack-python/>`__
 - **YAML:** `PyYAML <https://pyyaml.org/>`__
 - **netCDF v3:** `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
-  or `scipy <https://www.scipy.org/>`__, plus `Dask <https://dask.org/>`__
+  or `scipy <https://www.scipy.org/>`__
 - **netCDF v4:** `netCDF4 <https://unidata.github.io/netcdf4-python/>`__
-  or `h5netcdf <https://h5netcdf.org/>`__, plus `Dask <https://dask.org/>`__
-- **Zarr v2/v3:** `Zarr <https://zarr.readthedocs.io/>`__ plus
-  `Dask <https://dask.org/>`__
-
+  or `h5netcdf <https://h5netcdf.org/>`__
+- **Zarr v2/v3:** `Zarr <https://zarr.readthedocs.io/>`__
 
 Installing with conda
 ---------------------

@@ -10,6 +10,11 @@ import logging
 import sys
 from typing import Literal
 
+try:
+    import dask
+except ImportError:
+    dask = None  # type: ignore[assignment]
+
 from recursive_diff.files import (
     DEFAULT_GLOB_PATTERNS,
     FORMATS,
@@ -165,36 +170,34 @@ def main(
     if argv is None:
         logging.basicConfig(level=loglevel, format=LOGFORMAT)  # pragma: nocover
 
-    # Load all files. For netCDF and Zarr, if Dask is installed this only loads metadata
-    # into RAM, but not the actual data. For other file formats, this eagerly loads
+    # Load all files. For netCDF and Zarr, this only loads metadata into RAM, but not
+    # the actual data, regardless if Dask is installed or not. For other file formats,
+    # this returns dask futures if Dask is installed; otherwise it eagerly loads
     # everything into RAM.
     lhs: object
     rhs: object
+    kwargs = {
+        "format": args.format,
+        "chunks": "auto" if dask is not None else None,
+        "netcdf_engine": args.netcdf_engine,
+    }
     if args.recursive:
-        lhs = recursive_open(
-            args.lhs,
-            args.patterns,
-            format=args.format,
-            netcdf_engine=args.netcdf_engine,
-        )
-        rhs = recursive_open(
-            args.rhs,
-            args.patterns,
-            format=args.format,
-            netcdf_engine=args.netcdf_engine,
-        )
+        lhs = recursive_open(args.lhs, args.patterns, **kwargs)
+        rhs = recursive_open(args.rhs, args.patterns, **kwargs)
     else:
-        lhs = open_(args.lhs, format=args.format, netcdf_engine=args.netcdf_engine)
-        rhs = open_(args.rhs, format=args.format, netcdf_engine=args.netcdf_engine)
+        lhs = open_(args.lhs, **kwargs)
+        rhs = open_(args.rhs, **kwargs)
 
     logger.info("Comparing...")
-    # In case of Dask-backed files (netCDF or Zarr):
-    # 1. Load a pair of files from lhs and rhs fully into RAM
+    # In case of netCDF or Zarr:
+    # 1. Load a pair of variables from lhs and rhs fully into RAM
     #    TODO: We could compare them chunk by chunk instead.
     # 2. compare them
     # 3. print all differences
     # 4. free the RAM
-    # 5. proceed to next pair
+    # 5. proceed to next pair of variables, or to the next file
+    # For all other file formats, if Dask is installed do the same file per file;
+    # otherwise, recursive_open already loaded everything eagerly into RAM.
     diff_iter = recursive_diff(
         lhs, rhs, abs_tol=args.atol, rel_tol=args.rtol, brief_dims=args.brief_dims
     )

@@ -277,6 +277,6 @@ def _strip_dataarray(
         if stack_dims:
             res = res.stack(__stacked__=stack_dims)
 
-    # Prevent infinite recursion - see cast(obj: xarray.DataArray)
+    # Prevent infinite recursion - see cast_dataarray()
     res.attrs["__strip_dataarray__"] = True
     return res

@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 import xarray
 
-from recursive_diff import dask_or_stub as dask
 from recursive_diff.cast import cast
+from recursive_diff.dask_compat import compute, is_delayed
 
 
 def are_instances(lhs: object, rhs: object, cls: type | tuple[type, ...]) -> bool:
@@ -202,6 +202,14 @@ def _recursive_diff(
         # Don't repeat dtype comparisons
         suppress_type_diffs = True
 
+    if is_delayed(lhs):
+        if is_delayed(rhs):
+            lhs, rhs = compute(lhs, rhs)
+        else:
+            lhs = lhs.compute()
+    elif is_delayed(rhs):
+        rhs = rhs.compute()
+
     # cast lhs and rhs to simpler data types; pretty-print data type
     dtype_lhs = _dtype_str(lhs)
     dtype_rhs = _dtype_str(rhs)
@@ -371,7 +379,7 @@ def _recursive_diff(
             #     rhs = rhs[differs].compute()
             #   The above 3 lines, if lhs and rhs were dask-backed, would
             #   effectively load the arrays 3 times each.
-            lhs, rhs = dask.compute(lhs, rhs)
+            lhs, rhs = compute(lhs, rhs)
 
             # Align to guarantee that the index is identical on both sides.
             # Change the order as needed. Fill the gaps with NaNs.

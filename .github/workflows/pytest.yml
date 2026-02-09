@@ -33,6 +33,7 @@ jobs:
         environment:
           - smoke
           - mindeps
+          - no-dask
           - no-optional
           - py39
           - py311

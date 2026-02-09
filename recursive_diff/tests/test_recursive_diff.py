@@ -863,7 +863,7 @@ def test_custom_classes():
     "chunk_lhs,chunk_rhs",
     [(None, None), (None, -1), (None, 2), ({"x": (1, 2)}, {"x": (2, 1)})],
 )
-def test_dask(chunk_lhs, chunk_rhs):
+def test_dask_dataarray(chunk_lhs, chunk_rhs):
     lhs = xarray.DataArray(["a", "b", "c"], dims=["x"])
     rhs = xarray.DataArray(["a", "b", "d"], dims=["x"])
     if chunk_lhs:
@@ -875,7 +875,7 @@ def test_dask(chunk_lhs, chunk_rhs):
 
 
 @requires_dask
-def test_dask_discards_data():
+def test_dask_dataarray_discards_data():
     """Test that chunked Dask datasets are loaded into memory and then
     discarded, without caching them in place with .load() or .persist()
     """
@@ -888,14 +888,27 @@ def test_dask_discards_data():
         return np.array([1, 2])
 
     a = xarray.DataArray(da.Array({("a", 0): (f,)}, "a", chunks=[(2,)], dtype="int"))
-    b = xarray.DataArray([1, 2])
-    b = a.compute()
+    b = xarray.DataArray([1, 2], name=a.name)
     check(a, b, "")
 
     # Test that the graph is computed again
     allow = False
     with pytest.raises(AssertionError):
         a.load()
+
+
+@requires_dask
+def test_dask_delayed():
+    from dask import delayed  # noqa: PLC0415
+
+    a = delayed(lambda: [10, 20])()
+    b = delayed(lambda: [10, 21])()
+    c = delayed(lambda: (10, 20))()
+    d = delayed([10, 20])
+
+    check(a, b, "[1]: 20 != 21 (abs: 1.0e+00, rel: 5.0e-02)")
+    check(a, c, "object type differs: list != tuple")
+    check(a, d, "")
 
 
 def test_recursion():
