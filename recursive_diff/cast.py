@@ -255,7 +255,7 @@ def _strip_dataarray(
     :returns:
         a stripped-down shallow copy of obj; otherwise None
     """
-    res = obj.copy()
+    res = obj.copy(deep=False)
 
     # Remove non-index coordinates
     for k, v in obj.coords.items():

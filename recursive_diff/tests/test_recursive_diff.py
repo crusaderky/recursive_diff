@@ -1039,6 +1039,7 @@ def test_lazy_datasets_without_dask(tmp_path):
     assert a2["v"]._in_memory
 
 
+@pytest.mark.xfail(reason="https://github.com/crusaderky/recursive_diff/issues/5")
 @requires_dask
 @requires_netcdf
 @pytest.mark.slow
