@@ -21,16 +21,17 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
   speed-ups disk reads are pipelined with comparisons. However it can also result in
   higher memory usage depending on available CPUs and disk read speeds; you can control
   it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
-- Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
+- Added support for :class:`pandas.DataFrame` with different dtypes for different columns
 - :class:`pandas.Index` diffs are much faster and retain the original order, instead of
   being sorted alphabetically
 - :class:`pandas.Index` now compare dtypes
 - :class:`pandas.MultiIndex` no longer compare names
 - Added support for NumPy and Pandas datetime objects too large for ``M8[ns]``
   (before year 1677 or after 2262)
+- Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
 
-Breaking CLI changes
-^^^^^^^^^^^^^^^^^^^^
+CLI changes
+^^^^^^^^^^^
 - The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``
 - The ``recursive-diff`` CLI tool, in addition to netCDF, also supports and
   compares by default JSON, JSONL, MessagePack, YAML, and Zarr files
@@ -48,10 +49,10 @@ Breaking CLI changes
        recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2  # valid (note the --)
        recursive-diff -r dir1 dir2 -m "foo*.nc"  # valid
 
-- The ``recursive-diff`` CLI tool no longer requires Dask to be installed.
+- The CLI tool no longer requires Dask to be installed.
 
-Other breaking changes
-^^^^^^^^^^^^^^^^^^^^^^
+Breaking changes
+^^^^^^^^^^^^^^^^
 - :func:`cast` no longer accepts the ``brief_dims`` argument
 
 
