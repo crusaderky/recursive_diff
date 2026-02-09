@@ -5,9 +5,9 @@ import glob
 import json
 import logging
 import os
+import pathlib
 import sys
 from collections.abc import Collection
-from pathlib import Path
 from typing import Any, Literal
 
 import xarray
@@ -27,7 +27,7 @@ DEFAULT_GLOB_PATTERNS = (
 logger = logging.getLogger("recursive-diff")
 
 
-def _infer_format_from_extension(fname: str | Path) -> Format:
+def _infer_format_from_extension(fname: str | pathlib.Path) -> Format:
     ext = str(fname).rsplit(".", 1)[-1].lower()
     if ext in FORMATS:
         return ext  # type: ignore[return-value]
@@ -35,7 +35,7 @@ def _infer_format_from_extension(fname: str | Path) -> Format:
 
 
 def open(
-    fname: str | Path,
+    fname: str | pathlib.Path,
     *,
     format: Format | None = None,
     netcdf_engine: str | None = None,
@@ -60,7 +60,7 @@ def open(
     :func:`~recursive_diff.recursive_eq`). Other file formats are eagerly fully loaded
     into RAM.
 
-    :param str | Path fname:
+    :param str | pathlib.Path fname:
         path to file
     :param str format:
         File format. Default: infer from file extension.
