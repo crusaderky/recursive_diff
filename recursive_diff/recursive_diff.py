@@ -17,7 +17,7 @@ import pandas as pd
 import xarray
 
 from recursive_diff.cast import cast
-from recursive_diff.dask_compat import compute, is_delayed
+from recursive_diff.dask_compat import compute, is_dask_collection, is_dask_delayed
 
 
 def are_instances(lhs: object, rhs: object, cls: type | tuple[type, ...]) -> bool:
@@ -37,13 +37,6 @@ def is_array_like(dtype: str) -> bool:
 
 def is_basic_noncontainer(x: object) -> bool:
     return type(x) in {bool, int, float, type(None), str, bytes}
-
-
-def is_dask_collection(x: object) -> bool:
-    f = getattr(x, "__dask_keys__", None)
-    if f is None:
-        return False
-    return bool(f())
 
 
 def recursive_diff(
@@ -209,12 +202,12 @@ def _recursive_diff(
         # Don't repeat dtype comparisons
         suppress_type_diffs = True
 
-    if is_delayed(lhs):
-        if is_delayed(rhs):
+    if is_dask_delayed(lhs):
+        if is_dask_delayed(rhs):
             lhs, rhs = compute(lhs, rhs)
         else:
             lhs = lhs.compute()
-    elif is_delayed(rhs):
+    elif is_dask_delayed(rhs):
         rhs = rhs.compute()
 
     # cast lhs and rhs to simpler data types; pretty-print data type
