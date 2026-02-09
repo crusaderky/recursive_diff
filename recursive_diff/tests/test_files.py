@@ -1,4 +1,5 @@
 import json
+import os.path
 from pathlib import Path
 
 import pytest
@@ -180,7 +181,7 @@ def test_recursive_open(tmp_path, path_type):
         f.write("This file should be ignored")
 
     actual = recursive_open(path_type(tmp_path))
-    assert actual == {"a.json": a, "subdir/b.jsonl": b}
+    assert actual == {"a.json": a, os.path.join("subdir", "b.jsonl"): b}
 
     actual = recursive_open(tmp_path, "*.json")
     assert actual == {"a.json": a}
@@ -189,10 +190,10 @@ def test_recursive_open(tmp_path, path_type):
     assert actual == {"a.json": a}
 
     actual = recursive_open(tmp_path, "sub*/*")
-    assert actual == {"subdir/b.jsonl": b}
+    assert actual == {os.path.join("subdir", "b.jsonl"): b}
 
     actual = recursive_open(tmp_path, ["a*", "**/b.*"])
-    assert actual == {"a.json": a, "subdir/b.jsonl": b}
+    assert actual == {"a.json": a, os.path.join("subdir", "b.jsonl"): b}
 
 
 def test_recursive_open_force_format(tmp_path):
