@@ -36,7 +36,7 @@ def cast(obj: object, brief_dims: Collection[Hashable]) -> object:  # noqa: ARG0
     :param obj:
         complex object that must be simplified
     :param brief_dims:
-        xarray dimensions that must be compacted.
+        Xarray dimensions that must be compacted.
         See documentation on :func:`recursive_diff`.
     :returns:
         simpler object to compare

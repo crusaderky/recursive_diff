@@ -550,7 +550,7 @@ def test_xarray():
     ds2.attrs["some2"] = 2
     ds2.attrs["other"] = "someval"
 
-    # Older versions of xarray don't have the 'Size 24B' bit
+    # Older versions of Xarray don't have the 'Size 24B' bit
     d1_str = str(ds1["d1"].stack({"__stacked__": ["x"]})).splitlines()[0].strip()
 
     check(
@@ -711,7 +711,7 @@ def test_brief_dims_nd():
 
 
 def test_brief_dims_nested():
-    """xarray object not at the first level, and not all variables have all
+    """Xarray object not at the first level, and not all variables have all
     brief_dims
     """
     lhs = {

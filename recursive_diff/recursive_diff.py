@@ -69,9 +69,9 @@ def recursive_diff(
     - bools are only equal to other bools
     - numpy arrays are compared elementwise and with tolerance,
       also testing the dtype
-    - pandas and xarray objects are compared elementwise, with tolerance, and
+    - pandas and Xarray objects are compared elementwise, with tolerance, and
       without order. Duplicate indices are not supported.
-    - xarray dimensions and variables are compared without order
+    - Xarray dimensions and variables are compared without order
     - collections (list, tuple, dict, set, frozenset) are recursively
       descended into
     - generic/unknown objects are compared with ==
@@ -92,10 +92,10 @@ def recursive_diff(
     :param brief_dims:
         One of:
 
-        - collection of strings representing xarray dimensions. If one or more
+        - collection of strings representing Xarray dimensions. If one or more
           differences are found along one of these dimensions, only one message
           will be reported, stating the differences count.
-        - "all", to produce one line only for every xarray variable that
+        - "all", to produce one line only for every Xarray variable that
           differs
 
         Omit to output a line for every single different cell.

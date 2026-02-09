@@ -15,7 +15,7 @@ T = TypeVar("T", xarray.DataArray, xarray.Dataset)
 
 
 def proper_unstack(array: T, dim: Hashable) -> T:
-    """Work around an issue in xarray that causes the data to be sorted
+    """Work around an issue in Xarray that causes the data to be sorted
     alphabetically by label on unstack():
 
     `<https://github.com/pydata/xarray/issues/906>`_
