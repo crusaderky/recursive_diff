@@ -39,6 +39,13 @@ def is_basic_noncontainer(x: object) -> bool:
     return type(x) in {bool, int, float, type(None), str, bytes}
 
 
+def is_dask_collection(x: object) -> bool:
+    f = getattr(x, "__dask_keys__", None)
+    if f is None:
+        return False
+    return bool(f())
+
+
 def recursive_diff(
     lhs: Any,
     rhs: Any,
@@ -369,25 +376,12 @@ def _recursive_diff(
             pass
 
         elif lhs.dims:
-            # Load the entire objects into RAM. When parsing huge disk-backed datasets,
-            # you want to do this at the very last possible moment. After this, we'll
-            # do:
-            # - alignment, which is potentially very expensive with dask
-            # - Extract differences (simplified code):
-            #     differs = lhs != rhs
-            #     lhs = lhs[differs].compute()
-            #     rhs = rhs[differs].compute()
-            #   The above 3 lines, if lhs and rhs were dask-backed, would
-            #   effectively load the arrays 3 times each.
-            lhs, rhs = compute(lhs, rhs)
-
             # Align to guarantee that the index is identical on both sides.
             # Change the order as needed. Fill the gaps with NaNs.
-
-            # index variables go through an outer join, whereas data variables
+            # Index variables go through an outer join, whereas data variables
             # and non-index coords use an inner join. This avoids creating
             # spurious NaNs in the data variable and only reporting missing
-            # elements only once
+            # elements only once.
             lhs, rhs = xarray.align(lhs, rhs, join=join)
 
             # Build array of bools that highlight all differences, use it to
@@ -400,8 +394,15 @@ def _recursive_diff(
                 # u = uint8,uint16, uint32, uint64
                 # f = float32, float64
                 # c = complex64, complex128
-                diffs = ~np.isclose(
-                    lhs.values, rhs.values, rtol=rel_tol, atol=abs_tol, equal_nan=True
+                if is_dask_collection(lhs) or is_dask_collection(rhs):
+                    import dask.array as da  # noqa: PLC0415
+
+                    isclose = da.isclose
+                else:
+                    isclose = np.isclose
+
+                diffs = ~isclose(
+                    lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True
                 )
 
             elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
@@ -413,14 +414,14 @@ def _recursive_diff(
                 # since 1970-01-01 (NaT is a special hardcoded value).
                 # We must first normalise the subtype, so that you can
                 # transparently compare e.g. <M8[ns] vs. <M8[D]
-                diffs = lhs.astype("<M8[ns]").astype(int) != rhs.astype(
-                    "<M8[ns]"
-                ).astype(int)
+                lhs_int = lhs.data.astype("<M8[ns]").astype(int)
+                rhs_int = rhs.data.astype("<M8[ns]").astype(int)
+                diffs = lhs_int != rhs_int
 
             else:
                 # At least one between lhs and rhs is non-numeric,
                 # e.g. bool or str
-                diffs = lhs.values != rhs.values
+                diffs = lhs.data != rhs.data
 
                 # NumPy <1.26:
                 # Comparison between two non-scalar, incomparable types
@@ -429,6 +430,9 @@ def _recursive_diff(
                 # instead, but in the future will perform elementwise comparison
                 if diffs is True:
                     diffs = np.ones(lhs.shape, dtype=bool)
+
+            # if is_dask_collection(lhs) or is_dask_collection(rhs):
+            #     assert is_dask_collection(diffs)
 
             if diffs.ndim > 1 and lhs.dims[-1] == "__stacked__":
                 # N>0 original dimensions, some (but not all) of which are in
@@ -442,6 +446,8 @@ def _recursive_diff(
                     dims=["__stacked__"],
                     coords={"__stacked__": lhs.coords["__stacked__"]},
                 )
+                # Potentially load from disk and compute the result
+                diffs_da = diffs_da.compute()
                 # Filter out identical elements
                 diffs_da = diffs_da[diffs_da != 0]
                 # Convert the diff count to plain dict with the original coords
@@ -453,15 +459,27 @@ def _recursive_diff(
                 # N>0 original dimensions, all of which are in brief_dims
 
                 # Produce diffs count along brief_dims
-                count = diffs.astype(int).sum()
+                (count,) = compute(diffs.astype(int).sum())
                 if count:
                     yield diff(f"{count} differences")
             else:
                 # N>0 original dimensions, none of which are in brief_dims
 
                 # Filter out identical elements
-                lhs = lhs[diffs]
-                rhs = rhs[diffs]
+                if is_dask_collection(diffs):
+                    # Can't filter a DataArray with a dask boolean mask,as indices
+                    # are always eager
+                    lhs_data = lhs.data[diffs]
+                    rhs_data = rhs.data[diffs]
+                    lhs_data, rhs_data, diffs = compute(lhs_data, rhs_data, diffs)
+                    lhs = lhs[diffs]
+                    lhs.data = lhs_data
+                    rhs = rhs[diffs]
+                    rhs.data = rhs_data
+                else:
+                    lhs = lhs[diffs]
+                    rhs = rhs[diffs]
+
                 # Convert the original arrays to plain dict
                 lhs = _dataarray_to_dict(lhs)
                 rhs = _dataarray_to_dict(rhs)
@@ -492,6 +510,7 @@ def _recursive_diff(
             # 0-dimensional arrays
             assert lhs.dims == ()
             assert rhs.dims == ()
+            lhs, rhs = compute(lhs, rhs)
             yield from _recursive_diff(
                 lhs.values.tolist(),
                 rhs.values.tolist(),

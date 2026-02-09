@@ -7,7 +7,13 @@ import pytest
 import xarray
 
 from recursive_diff import cast, recursive_diff
-from recursive_diff.tests import PANDAS_GE_200, filter_old_numpy_warnings, requires_dask
+from recursive_diff.tests import (
+    PANDAS_GE_200,
+    filter_old_numpy_warnings,
+    requires_dask,
+    requires_netcdf,
+)
+from recursive_diff.tests.memory import MemoryMonitor
 
 
 class Rectangle:
@@ -121,6 +127,19 @@ def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
     ],
 )
 def test_identical(x):
+    assert not list(recursive_diff(x, deepcopy(x)))
+
+
+@requires_dask
+@pytest.mark.parametrize(
+    "x",
+    [
+        xarray.DataArray([1, 2]),
+        xarray.DataArray([1, 2], dims=["x"], coords={"x": [3, 4]}),
+    ],
+)
+def test_identical_dask(x):
+    x = x.chunk()
     assert not list(recursive_diff(x, deepcopy(x)))
 
 
@@ -531,7 +550,12 @@ def test_pandas_multiindex():
     )
 
 
-def test_xarray():
+@pytest.fixture(params=[False, pytest.param(True, marks=requires_dask)])
+def chunk(request):
+    return request.param
+
+
+def test_xarray(chunk):
     # xarray.Dataset
     ds1 = xarray.Dataset(
         data_vars={"d1": ("x", [1, 2, 3]), "d2": (("y", "x"), [[4, 5, 6], [7, 8, 9]])},
@@ -549,6 +573,10 @@ def test_xarray():
     ds2["nonindex"][1] = "ni4"
     ds2.attrs["some2"] = 2
     ds2.attrs["other"] = "someval"
+
+    if chunk:
+        ds1 = ds1.chunk()
+        ds2 = ds2.chunk()
 
     # Older versions of Xarray don't have the 'Size 24B' bit
     d1_str = str(ds1["d1"].stack({"__stacked__": ["x"]})).splitlines()[0].strip()
@@ -604,53 +632,73 @@ def test_xarray():
     )
 
 
-def test_xarray_scalar():
+def test_xarray_scalar(chunk):
     da1 = xarray.DataArray(1.0)
     da2 = xarray.DataArray(1.0 + 1e-7)
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
     check(da1, da2, "[data]: 1.0 != 1.0000001 (abs: 1.0e-07, rel: 1.0e-07)")
     da2 = xarray.DataArray(1.0 + 1e-10)
     check(da1, da2)
 
 
-def test_xarray_no_coords():
+def test_xarray_no_coords(chunk):
+    da1 = xarray.DataArray([0, 1])
+    da2 = xarray.DataArray([0, 2])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
     check(
-        xarray.DataArray([0, 1]),
-        xarray.DataArray([0, 2]),
+        da1,
+        da2,
         "[data][1]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)",
     )
 
 
-def test_xarray_mismatched_dims():
+def test_xarray_mismatched_dims_0d_1d(chunk):
     # 0-dimensional vs. 1+-dimensional
-    check(
-        xarray.DataArray(1.0),
-        xarray.DataArray([0.0, 0.1]),
-        "[index]: Dimension dim_0 is in RHS only",
-    )
+    da1 = xarray.DataArray(1.0)
+    da2 = xarray.DataArray([0.0, 0.1])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
 
+    check(da1, da2, "[index]: Dimension dim_0 is in RHS only")
+
+
+def test_xarray_mismatched_dims_1dplus(chunk):
     # both arrays are 1+-dimensional
-    check(
-        xarray.DataArray([0, 1], dims=["x"]),
-        xarray.DataArray([[0, 1], [2, 3]], dims=["x", "y"]),
-        "[index]: Dimension y is in RHS only",
-    )
+    da1 = xarray.DataArray([0, 1], dims=["x"])
+    da2 = xarray.DataArray([[0, 1], [2, 3]], dims=["x", "y"])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
+    check(da1, da2, "[index]: Dimension y is in RHS only")
 
 
-def test_xarray_size0():
-    check(
-        xarray.DataArray([]),
-        xarray.DataArray([1.0]),
-        "[index][dim_0]: RHS has 1 more elements than LHS",
-    )
+def test_xarray_size0(chunk):
+    da1 = xarray.DataArray([])
+    da2 = xarray.DataArray([1.0])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
+    check(da1, da2, "[index][dim_0]: RHS has 1 more elements than LHS")
 
 
-def test_xarray_stacked():
+def test_xarray_stacked(chunk):
     # Pre-stacked dims, mixed with non-stacked ones
     da1 = xarray.DataArray(
         [[[0, 1], [2, 3]], [[4, 5], [6, 7]]],
         dims=["x", "y", "z"],
         coords={"x": ["x1", "x2"]},
     )
+    if chunk:
+        da1 = da1.chunk()
 
     # Stacked and unstacked dims are compared point by point,
     # while still pointing out the difference in stacking
@@ -667,10 +715,14 @@ def test_xarray_stacked():
     )
 
 
-def test_brief_dims_1d():
+def test_brief_dims_1d(chunk):
     # all dims are brief
     da1 = xarray.DataArray([1, 2, 3], dims=["x"])
     da2 = xarray.DataArray([1, 3, 4], dims=["x"])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
     check(
         da1,
         da2,
@@ -685,10 +737,14 @@ def test_brief_dims_1d():
     check(da1, da1, brief_dims="all")
 
 
-def test_brief_dims_nd():
+def test_brief_dims_nd(chunk):
     # some dims are brief
     da1 = xarray.DataArray([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dims=["r", "c"])
     da2 = xarray.DataArray([[1, 5, 4], [4, 5, 6], [7, 8, 0]], dims=["r", "c"])
+    if chunk:
+        da1 = da1.chunk()
+        da2 = da2.chunk()
+
     check(
         da1,
         da2,
@@ -710,7 +766,7 @@ def test_brief_dims_nd():
     check(da1, da1, brief_dims="all")
 
 
-def test_brief_dims_nested():
+def test_brief_dims_nested(chunk):
     """Xarray object not at the first level, and not all variables have all
     brief_dims
     """
@@ -730,6 +786,10 @@ def test_brief_dims_nested():
             }
         )
     }
+    if chunk:
+        lhs["foo"] = lhs["foo"].chunk()
+        rhs["foo"] = rhs["foo"].chunk()
+
     check(
         lhs,
         rhs,
@@ -954,3 +1014,50 @@ def test_repetition_is_not_recursion():
     lhs = [c1, c1]
     rhs = [c1, C()]
     check(lhs, rhs)
+
+
+@requires_netcdf
+def test_lazy_datasets_without_dask(tmp_path):
+    """Test that xarray datasets using internal lazy indices
+    (e.g. xarray.open(..., chunks=None) ) are compared and are not permanently cached
+    into memory afterwards.
+    """
+    a = xarray.Dataset({"v": ("x", [1, 2, 3])})
+    b = xarray.Dataset({"v": ("x", [1, 2, 4])})
+    a.to_netcdf(tmp_path / "a.nc")
+    b.to_netcdf(tmp_path / "b.nc")
+
+    a2 = xarray.open_dataset(tmp_path / "a.nc")
+    b2 = xarray.open_dataset(tmp_path / "b.nc")
+
+    check(a, b, "[data_vars][v][x=2]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")
+
+    # Check that the data is not cached in place
+    assert not a2["v"]._in_memory
+    assert not b2["v"]._in_memory
+    a2.load()
+    assert a2["v"]._in_memory
+
+
+@requires_dask
+@requires_netcdf
+@pytest.mark.slow
+@pytest.mark.thread_unsafe(reason="process-wide memory readings")
+@pytest.mark.parametrize("chunks", [None, "auto"])
+def test_lazy_datasets_huge(tmp_path, chunks):
+    import dask  # noqa: PLC0415
+    import dask.array as da  # noqa: PLC0415
+
+    # 200 MiB, 8 MiB per variable
+    a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(25)})
+    a.to_netcdf(tmp_path / "a.nc")
+    del a
+    a = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
+
+    # Peak memory usage on Dask = thread count * thread heap size
+    with dask.config.set({"num_workers": 1}), MemoryMonitor() as mm:
+        check(a, a, "")
+        # for i in range(25):
+        #     (a[f"v{i}"] == a[f"v{i}"]).all().compute()
+
+    mm.assert_peak(50 * 2**20)
