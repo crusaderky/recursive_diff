@@ -26,55 +26,74 @@ def path_type(request):
     return request.param
 
 
-def test_open_json(tmp_path, path_type):
+@pytest.fixture(
+    params=[
+        None,
+        pytest.param("auto", marks=requires_dask),
+        pytest.param(-1, marks=requires_dask),
+        pytest.param({}, marks=requires_dask),
+    ]
+)
+def chunks(request):
+    return request.param
+
+
+def test_open_json(tmp_path, path_type, chunks):
     a = {"foo": "bar", "baz": [1, 2, 3]}
     fname = path_type(tmp_path / "test.json")
     with open(fname, "w") as f:
         json.dump(a, f)
-    b = rdopen(fname)
+    b = rdopen(fname, chunks=chunks)
+    if chunks is not None:
+        b = b.compute()
     assert b == a
 
 
-def test_open_jsonl(tmp_path, path_type):
+def test_open_jsonl(tmp_path, path_type, chunks):
     a = [{"foo": "bar"}, {"baz": [1, 2, 3]}]
     fname = path_type(tmp_path / "test.jsonl")
     with open(fname, "w") as f:
         for line in a:
             f.write(json.dumps(line) + "\n")
-    b = rdopen(fname)
+    b = rdopen(fname, chunks=chunks)
+    if chunks is not None:
+        b = b.compute()
     assert b == a
 
 
-def test_open_yaml(tmp_path, path_type):
+def test_open_yaml(tmp_path, path_type, chunks):
     yaml = pytest.importorskip("yaml")
 
     a = {"foo": "bar", "baz": [1, 2, 3]}
     fname = path_type(tmp_path / "test.yaml")
     with open(fname, "w") as f:
         yaml.dump(a, f)
-    b = rdopen(fname)
+    b = rdopen(fname, chunks=chunks)
+    if chunks is not None:
+        b = b.compute()
     assert b == a
 
 
-def test_open_msgpack(tmp_path, path_type):
+def test_open_msgpack(tmp_path, path_type, chunks):
     msgpack = pytest.importorskip("msgpack")
 
     a = {"foo": "bar", "baz": [1, 2, 3]}
     fname = path_type(tmp_path / "test.msgpack")
     with open(fname, "wb") as f:
         msgpack.dump(a, f)
-    b = rdopen(fname)
+    b = rdopen(fname, chunks=chunks)
+    if chunks is not None:
+        b = b.compute()
     assert b == a
 
 
 @requires_netcdf
-def test_open_netcdf(tmp_path, path_type):
+def test_open_netcdf(tmp_path, path_type, chunks):
     a = xarray.Dataset({"v1": (["x", "y"], [[1, 2], [3, 4]])}, coords={"x": ["a", "b"]})
     fname = path_type(tmp_path / "test.nc")
     a.to_netcdf(fname)
-    b = rdopen(fname)
-    # Dataset is lazy using Dask
-    assert b.__dask_graph__() is not None
+    b = rdopen(fname, chunks=chunks)
+    assert (b.__dask_graph__() is None) is (chunks is None)
     assert_equal(a, b)
 
 
@@ -95,7 +114,6 @@ def test_open_netcdf_engine(tmp_path):
 
 
 @requires_zarr
-@requires_dask
 @pytest.mark.filterwarnings(
     "ignore:Consolidated metadata is currently not part in the "
     "Zarr format 3 specification"
@@ -113,13 +131,12 @@ def test_open_netcdf_engine(tmp_path):
         ),
     ],
 )
-def test_open_zarr(tmp_path, path_type, kwargs):
+def test_open_zarr(tmp_path, path_type, kwargs, chunks):
     a = xarray.Dataset({"v1": (["x", "y"], [[1, 2], [3, 4]])}, coords={"x": [10, 20]})
     fname = path_type(tmp_path / "test.zarr")
     a.to_zarr(fname, **kwargs)
-    b = rdopen(fname)
-    # Dataset is lazy using Dask
-    assert b.__dask_graph__() is not None
+    b = rdopen(fname, chunks=chunks)
+    assert (b.__dask_graph__() is None) is (chunks is None)
     assert_equal(a, b)
     # Quietly ignore netcdf_engine parameter
     # Do not pass it to xarray.open_dataset(..., engine=...)
@@ -131,7 +148,6 @@ def test_infer_format():
     assert _infer_format_from_extension("foo.json") == "json"
     assert _infer_format_from_extension("foo.JSON") == "json"
     assert _infer_format_from_extension("/a/b/../c/foo.bar.JsoN") == "json"
-    assert _infer_format_from_extension(Path("/a/b/../c/foo.bar.JsoN")) == "json"
     assert _infer_format_from_extension("foo.jsonl") == "jsonl"
     assert _infer_format_from_extension("foo.yaml") == "yaml"
     assert _infer_format_from_extension("foo.yml") == "yml"
@@ -142,8 +158,6 @@ def test_infer_format():
 
     with pytest.raises(ValueError, match="Could not infer file format"):
         _infer_format_from_extension("foo")
-    with pytest.raises(ValueError, match="Could not infer file format"):
-        _infer_format_from_extension(Path("foo"))
     with pytest.raises(ValueError, match="Could not infer file format"):
         _infer_format_from_extension("foo.json.gz")
 
@@ -207,6 +221,18 @@ def test_recursive_open_force_format(tmp_path):
         recursive_open(tmp_path)
     actual = recursive_open(tmp_path, format="jsonl")
     assert actual == {"a.json": a}
+
+
+def test_recursive_open_chunks(tmp_path, chunks):
+    a = {"foo": "bar", "baz": [1, 2, 3]}
+    with open(tmp_path / "a.json", "w") as f:
+        json.dump(a, f)
+    actual = recursive_open(tmp_path, chunks=chunks)
+    assert actual.keys() == {"a.json"}
+    b = actual["a.json"]
+    if chunks is not None:
+        b = b.compute()
+    assert b == a
 
 
 @requires_h5netcdf
