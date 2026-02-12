@@ -28,6 +28,10 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
 - :class:`pandas.MultiIndex` no longer compare names
 - Added support for NumPy and Pandas datetime objects too large for ``M8[ns]``
   (before year 1677 or after 2262)
+- When comparing array data, use ``np.isclose(rhs, lhs)`` instead of 
+  ``np.isclose(lhs, rhs)``, as the function is not symmetric and the second parameter is
+  the reference value. See :func:`numpy.isclose`. Comparison of floats continues using
+  :func:`math.isclose`, which uses a slightly different algorithm.
 - Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
 
 CLI changes
