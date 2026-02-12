@@ -509,7 +509,7 @@ def test_pandas_series():
     )
 
 
-def test_pandas_dataframe():
+def test_pandas_dataframe_one_dtype():
     df1 = pd.DataFrame(
         [[1, 2, 3], [4, 5, 6]], index=["x1", "x2"], columns=["y1", "y2", "y3"]
     )
@@ -523,6 +523,35 @@ def test_pandas_dataframe():
         "[data][column=y3, index=x2]: 6 != 7 (abs: 1.0e+00, rel: 1.7e-01)",
         "[columns]: y2 is in LHS only",
         "[columns]: y4 is in RHS only",
+    )
+
+    df3 = df1.astype(float)
+    # Difference in dtype is only reported once
+    check(
+        df1,
+        df3,
+        "object type differs: DataFrame<int64> != DataFrame<float64>",
+    )
+
+
+def test_pandas_dataframe_many_dtypes():
+    df1 = pd.DataFrame(
+        {"x": [1, 2, 3, 4], "y": ["a", "b", "c", "d"]}, index=["i1", "i2", "i3", "i4"]
+    )
+    df2 = pd.DataFrame(
+        {"x": [1.0, 3.001, 2.1], "y": ["b", "c", "b"], "z": [1, 2, 3]},
+        index=["i1", "i3", "i2"],
+    )
+
+    check(
+        df1,
+        df2,
+        "[columns]: z is in RHS only",
+        "[index]: i4 is in LHS only",
+        "[dtypes][x]: object type differs: Series<int64> != Series<float64>",
+        "[data][x][index=i2]: 2 != 2.1 (abs: 1.0e-01, rel: 5.0e-02)",
+        "[data][y][index=i1]: a != b",
+        abs_tol=0.05,
     )
 
 

@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import enum
 from functools import singledispatch
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import xarray
+
+
+class MissingKeys(enum.Enum):
+    """key:value pair to add to dicts returned by cast()
+    to change behaviour when a key is missing left or right:
+
+    {MissingKeys: MissingKeys.IGNORE}
+        Do not print a message about missing keys
+    {MissingKeys: MissingKeys.DIMENSION}
+        Print message `Dimension {key} is in LHS/RHS only`.
+        Do not print value.
+    {MissingKeys: MissingKeys.PAIR} (default if nothing is present):
+        Pair {key}:{value} is in LHS/RHS only")
+    """
+
+    IGNORE = enum.auto()
+    DIMENSION = enum.auto()
+    PAIR = enum.auto()
 
 
 @singledispatch
@@ -78,15 +97,15 @@ def cast_npfloat(obj: np.floating) -> float:
 
 
 @cast.register(np.ndarray)
-def cast_nparray(obj: np.ndarray) -> dict[str, Any]:
+def cast_nparray(obj: np.ndarray) -> dict[Any, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`numpy.ndarray`.
 
     Cast to a DataArray with dimensions dim_0, dim_1, ... and
     RangeIndex() as the coords.
     """
-    out: dict[str, Any] = {
-        "__index_dict": True,
+    out: dict[Any, Any] = {
+        MissingKeys: MissingKeys.DIMENSION,
         "data": _strip_dataarray(xarray.DataArray(obj)),
     }
     for i, size in enumerate(obj.shape):
@@ -113,20 +132,31 @@ def cast_dataframe(obj: pd.DataFrame) -> dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.DataFrame`.
 
-    Cast to a DataArray.
-
-    TODO: proper support for columns with different dtypes. Right now
-    they are cast to the closest common type by DataFrame.values.
+    Cast to a dict of DataArrays, or to a single DataArray
+    if there is only one dtype.
     """
-    return {
-        "index": obj.index,
-        "columns": obj.columns,
-        "data": _strip_dataarray(xarray.DataArray(obj, dims=["index", "column"])),
+    if obj.dtypes.unique().size == 1:
+        return {
+            "index": obj.index,
+            "columns": obj.columns,
+            "data": _strip_dataarray(xarray.DataArray(obj, dims=["index", "column"])),
+        }
+
+    data: dict[Any, Any] = {
+        k: _strip_dataarray(xarray.DataArray(obj[k], dims=["index"]))
+        for k in obj.columns
     }
+    # Missing columns are already reported in the [columns] section
+    data[MissingKeys] = MissingKeys.IGNORE
+    dtypes: dict[Any, Any] = {
+        k: pd.Series([], dtype=dtype) for k, dtype in obj.dtypes.items()
+    }
+    dtypes[MissingKeys] = MissingKeys.IGNORE
+    return {"index": obj.index, "columns": obj.columns, "data": data, "dtypes": dtypes}
 
 
 @cast.register(xarray.DataArray)
-def cast_dataarray(obj: xarray.DataArray) -> xarray.DataArray | dict[str, Any]:
+def cast_dataarray(obj: xarray.DataArray) -> xarray.DataArray | dict[Any, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.DataArray`.
 
@@ -151,7 +181,7 @@ def cast_dataarray(obj: xarray.DataArray) -> xarray.DataArray | dict[str, Any]:
         },
         "data": _strip_dataarray(obj),
     }
-    out["index"]["__index_dict"] = True
+    out["index"][MissingKeys] = MissingKeys.DIMENSION
     return out
 
 
@@ -175,7 +205,7 @@ def cast_dataset(obj: xarray.Dataset) -> dict[str, Any]:
         },
         "data_vars": {k: _strip_dataarray(v) for k, v in obj.data_vars.items()},
     }
-    out["index"]["__index_dict"] = True
+    out["index"][MissingKeys] = MissingKeys.DIMENSION
     return out
 
 
