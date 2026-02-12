@@ -175,6 +175,9 @@ def _recursive_diff(
     path list one element.
     """
 
+    if lhs is rhs:
+        return
+
     def diff(msg: str, print_path: list[object] = path) -> str:
         """Format diff message, prepending the formatted path"""
         path_prefix = "".join(f"[{elem}]" for elem in print_path)

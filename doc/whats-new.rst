@@ -21,6 +21,7 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
   speed-ups disk reads are pipelined with comparisons. However it can also result in
   higher memory usage depending on available CPUs and disk read speeds; you can control
   it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
+- Added fast-path when lhs and rhs share the same object reference.
 - Added support for :class:`pandas.DataFrame` with different dtypes for different columns
 - :class:`pandas.Index` diffs are much faster and retain the original order, instead of
   being sorted alphabetically

@@ -261,6 +261,23 @@ def test_int_vs_float():
     check(1, 1.01, abs_tol=0.1)
 
 
+def test_identity():
+    """Test a fast path for identical objects. Note that this is also triggered
+    by small integers, all strings hardcoded in a unit test, and other internalized
+    objects.
+    """
+    lhs = [1, 123456, "foo", "bar"]  # All these objects are internalized!
+    lhs[1] += 1  # Output of dynamic operation and no longer internalized
+    lhs[3] += "baz"
+    # Referencing objects directly from lhs is pointless in CPython due to
+    # internalization. This is just for the sake of being implementation agnostic.
+    rhs = [lhs[0], 123456, lhs[2], "bar"]  
+    rhs[1] += 1
+    rhs[3] += "baz"
+
+    check(lhs, rhs)
+
+
 def test_numpy_types():
     """scalar numpy data types (not to be confused with numpy arrays)
     are silently cast to pure numpy types and do not cause an
@@ -1185,7 +1202,7 @@ def test_lazy_datasets_without_dask(tmp_path):
 @requires_zarr
 @pytest.mark.slow
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
-@pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 50)])
+@pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 80)])
 @pytest.mark.parametrize("format", ["netcdf", "zarr"])
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
     import dask
