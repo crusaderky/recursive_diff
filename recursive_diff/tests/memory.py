@@ -55,7 +55,7 @@ class MemoryMonitor:
         max_delta bytes."""
         assert self.delta < max_delta, str(self)
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         def fmt(b: int) -> str:
             return f"{b / 2**20:.1f} MiB"
 
