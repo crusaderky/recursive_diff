@@ -1,5 +1,6 @@
 import json
 import os.path
+import sys
 from pathlib import Path
 
 import pytest
@@ -251,3 +252,14 @@ def test_recursive_open_netcdf_engine(tmp_path):
 
     with pytest.raises(TypeError, match="not a valid NetCDF 3 file"):
         recursive_open(tmp_path, netcdf_engine="scipy")
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Thread-unsafe on Python <3.10")
+def test_recursive_open_threadsafe(tmp_path):
+    """Test that recursive_open does not tamper with the cwd.
+    This test relies on pytest-run-parallel to detect race conditions.
+    """
+    cwd = os.getcwd()
+    assert cwd != str(tmp_path)
+    assert recursive_open(tmp_path) == {}
+    assert cwd == os.getcwd()
