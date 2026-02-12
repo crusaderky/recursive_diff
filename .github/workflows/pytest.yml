@@ -33,6 +33,7 @@ jobs:
         environment:
           - smoke
           - mindeps
+          - xarray2024-5
           - no-dask
           - no-optional
           - py39

@@ -10,10 +10,13 @@ from recursive_diff import cast, recursive_diff
 from recursive_diff.tests import (
     PANDAS_GE_200,
     PANDAS_GE_300,
+    TO_ZARR_V2,
+    XARRAY_GE_2024_5_0,
     XARRAY_GE_2025_1_2,
     filter_old_numpy_warnings,
     requires_dask,
     requires_netcdf,
+    requires_zarr,
 )
 from recursive_diff.tests.memory import MemoryMonitor
 
@@ -1147,28 +1150,32 @@ def test_lazy_datasets_without_dask(tmp_path):
     assert a2["v"]._in_memory
 
 
-@pytest.mark.xfail(
-    reason="https://github.com/crusaderky/recursive_diff/issues/5", strict=False
-)
+@pytest.mark.skipif(not XARRAY_GE_2024_5_0, reason="requires xarray>=2024.5.0")
 @requires_dask
 @requires_netcdf
+@requires_zarr
 @pytest.mark.slow
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
-@pytest.mark.parametrize("chunks", [None, "auto"])
-def test_lazy_datasets_huge(tmp_path, chunks):
+@pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 50)])
+@pytest.mark.parametrize("format", ["netcdf", "zarr"])
+def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
     import dask
     import dask.array as da
 
-    # 200 MiB, 8 MiB per variable
-    a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(25)})
-    a.to_netcdf(tmp_path / "a.nc")
+    # 320 MiB, 8 MiB per variable
+    a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(40)})
+    if format == "netcdf":
+        a.to_netcdf(tmp_path / "a.nc")
+        b = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
+        c = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
+    else:
+        a.to_zarr(tmp_path / "a.zarr", **TO_ZARR_V2)
+        b = xarray.open_dataset(tmp_path / "a.zarr", engine="zarr", chunks=chunks)
+        c = xarray.open_dataset(tmp_path / "a.zarr", engine="zarr", chunks=chunks)
     del a
-    a = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
 
     # Peak memory usage on Dask = thread count * thread heap size
     with dask.config.set({"num_workers": 1}), MemoryMonitor() as mm:
-        check(a, a, "")
-        # for i in range(25):
-        #     (a[f"v{i}"] == a[f"v{i}"]).all().compute()
+        check(b, c, "")
 
-    mm.assert_peak(50 * 2**20)
+    mm.assert_peak(max_peak * 2**20)
