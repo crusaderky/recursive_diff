@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Collection, Hashable
 from functools import singledispatch
 from typing import Any
 
@@ -8,11 +7,9 @@ import numpy as np
 import pandas as pd
 import xarray
 
-from recursive_diff.proper_unstack import proper_unstack
-
 
 @singledispatch
-def cast(obj: object, brief_dims: Collection[Hashable]) -> object:  # noqa: ARG001
+def cast(obj: object) -> object:
     """Helper function of :func:`recursive_diff`.
 
     Cast objects into simpler object types:
@@ -36,9 +33,6 @@ def cast(obj: object, brief_dims: Collection[Hashable]) -> object:  # noqa: ARG0
 
     :param obj:
         complex object that must be simplified
-    :param brief_dims:
-        Xarray dimensions that must be compacted.
-        See documentation on :func:`recursive_diff`.
     :returns:
         simpler object to compare
     """
@@ -47,8 +41,28 @@ def cast(obj: object, brief_dims: Collection[Hashable]) -> object:  # noqa: ARG0
     return obj
 
 
+@cast.register(tuple)
+def cast_tuple(obj: tuple) -> list:
+    """Single dispatch specialised variant of :func:`cast` for
+    :class:`tuple`.
+
+    Cast to a list.
+    """
+    return list(obj)
+
+
+@cast.register(frozenset)
+def cast_frozenset(obj: frozenset) -> set:
+    """Single dispatch specialised variant of :func:`cast` for
+    :class:`frozenset`.
+
+    Cast to a set.
+    """
+    return set(obj)
+
+
 @cast.register(np.integer)
-def cast_npint(obj: np.integer, brief_dims: Collection[Hashable]) -> int:  # noqa: ARG001
+def cast_npint(obj: np.integer) -> int:
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     integers (not to be confused with numpy arrays of integers)
     """
@@ -56,7 +70,7 @@ def cast_npint(obj: np.integer, brief_dims: Collection[Hashable]) -> int:  # noq
 
 
 @cast.register(np.floating)
-def cast_npfloat(obj: np.floating, brief_dims: Collection[Hashable]) -> float:  # noqa: ARG001
+def cast_npfloat(obj: np.floating) -> float:
     """Single dispatch specialised variant of :func:`cast` for all numpy scalar
     floats (not to be confused with numpy arrays of floats)
     """
@@ -64,18 +78,16 @@ def cast_npfloat(obj: np.floating, brief_dims: Collection[Hashable]) -> float:  
 
 
 @cast.register(np.ndarray)
-def cast_nparray(
-    obj: np.ndarray, brief_dims: Collection[Hashable]
-) -> dict[str, object]:
+def cast_nparray(obj: np.ndarray) -> dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`numpy.ndarray`.
 
-    Map to a DataArray with dimensions dim_0, dim_1, ... and
+    Cast to a DataArray with dimensions dim_0, dim_1, ... and
     RangeIndex() as the coords.
     """
     out: dict[str, Any] = {
         "__index_dict": True,
-        "data": _strip_dataarray(xarray.DataArray(obj), brief_dims),
+        "data": _strip_dataarray(xarray.DataArray(obj)),
     }
     for i, size in enumerate(obj.shape):
         out[f"dim_{i}"] = pd.RangeIndex(size)
@@ -83,46 +95,42 @@ def cast_nparray(
 
 
 @cast.register(pd.Series)
-def cast_series(obj: pd.Series, brief_dims: Collection[Hashable]) -> dict[str, object]:
+def cast_series(obj: pd.Series) -> dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.Series`.
 
-    Map to a DataArray.
+    Cast to a DataArray.
     """
     return {
         "name": obj.name,
-        "data": _strip_dataarray(xarray.DataArray(obj, dims=["index"]), brief_dims),
         "index": obj.index,
+        "data": _strip_dataarray(xarray.DataArray(obj, dims=["index"])),
     }
 
 
 @cast.register(pd.DataFrame)
-def cast_dataframe(
-    obj: pd.DataFrame, brief_dims: Collection[Hashable]
-) -> dict[str, object]:
+def cast_dataframe(obj: pd.DataFrame) -> dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`pandas.DataFrame`.
 
-    Map to a DataArray.
+    Cast to a DataArray.
 
     TODO: proper support for columns with different dtypes. Right now
     they are cast to the closest common type by DataFrame.values.
     """
     return {
-        "data": _strip_dataarray(
-            xarray.DataArray(obj, dims=["index", "column"]), brief_dims
-        ),
         "index": obj.index,
         "columns": obj.columns,
+        "data": _strip_dataarray(xarray.DataArray(obj, dims=["index", "column"])),
     }
 
 
 @cast.register(xarray.DataArray)
-def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]) -> object:
+def cast_dataarray(obj: xarray.DataArray) -> xarray.DataArray | dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.DataArray`.
 
-    Map to a simpler DataArray, with separate indices, non-index coords,
+    Cast to a simpler DataArray, with separate indices, non-index coords,
     name, and attributes.
     """
     # Prevent infinite recursion - see _strip_dataarray()
@@ -137,24 +145,22 @@ def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]) -> o
         # RangeIndex(shape[i]) if it doesn't exist
         "index": {k: obj.coords[k].to_index() for k in obj.dims},
         "coords": {
-            k: _strip_dataarray(v, brief_dims)
+            k: _strip_dataarray(v)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
-        "data": _strip_dataarray(obj, brief_dims),
+        "data": _strip_dataarray(obj),
     }
     out["index"]["__index_dict"] = True
     return out
 
 
 @cast.register(xarray.Dataset)
-def cast_dataset(
-    obj: xarray.Dataset, brief_dims: Collection[Hashable]
-) -> dict[str, object]:
+def cast_dataset(obj: xarray.Dataset) -> dict[str, Any]:
     """Single dispatch specialised variant of :func:`cast` for
     :class:`xarray.Dataset`.
 
-    Map to a dict of DataArrays.
+    Cast to a dict of DataArrays.
     """
     out: dict[str, Any] = {
         "attrs": obj.attrs,
@@ -163,57 +169,29 @@ def cast_dataset(
         # See above on why indices are handled separately
         "index": {k: obj.coords[k].to_index() for k in obj.dims},
         "coords": {
-            k: _strip_dataarray(v, brief_dims)
+            k: _strip_dataarray(v)
             for k, v in obj.coords.items()
             if not isinstance(v.variable, xarray.IndexVariable)
         },
-        "data_vars": {
-            k: _strip_dataarray(v, brief_dims) for k, v in obj.data_vars.items()
-        },
+        "data_vars": {k: _strip_dataarray(v) for k, v in obj.data_vars.items()},
     }
     out["index"]["__index_dict"] = True
     return out
 
 
-@cast.register(frozenset)
-def cast_frozenset(obj: frozenset, brief_dims: Collection[Hashable]) -> set:  # noqa: ARG001
-    """Single dispatch specialised variant of :func:`cast` for
-    :class:`frozenset`.
-
-    Cast to a set.
-    """
-    return set(obj)
-
-
-@cast.register(tuple)
-def cast_tuple(obj: tuple, brief_dims: Collection[Hashable]) -> list:  # noqa: ARG001
-    """Single dispatch specialised variant of :func:`cast` for
-    :class:`tuple`.
-
-    Cast to a list.
-    """
-    return list(obj)
-
-
-def _strip_dataarray(
-    obj: xarray.DataArray, brief_dims: Collection[Hashable]
-) -> xarray.DataArray:
+def _strip_dataarray(obj: xarray.DataArray) -> xarray.DataArray:
     """Helper function of :func:`recursive_diff`.
 
-    Analyse a :class:`xarray.DataArray` and:
+    Return a shallow copy of a :class:`xarray.DataArray` with:
 
-    - strip away any non-index coordinates (including scalar coords)
-    - create stub coords for dimensions without coords
-    - sort dimensions alphabetically
-    - ravel the array to a 1D array with (potentially) a MultiIndex.
-      brief_dims, if any, are excluded.
+    - no non-index coordinates (including scalar coords)
+    - all indices have a coordinate
+    - dimensions sorted alphabetically
 
     :param obj:
         any xarray.DataArray
-    :param brief_dims:
-        collection of dims, or "all"
     :returns:
-        a stripped-down shallow copy of obj; otherwise None
+        a stripped-down shallow copy of obj
     """
     res = obj.copy(deep=False)
 
@@ -222,20 +200,14 @@ def _strip_dataarray(
         if not isinstance(v.variable, xarray.IndexVariable):
             del res[k]
 
-    # Ravel the array to make it become 1-dimensional.
-    # To do this, we must first unstack any already stacked dimension.
-    for dim in obj.dims:
-        if isinstance(obj.get_index(dim), pd.MultiIndex):
-            res = proper_unstack(res, dim)
+    # Add missing index coordinates
+    # This is needed to align e.g. two numpy arrays of different sizes
+    for k, size in zip(obj.dims, obj.shape):
+        if k not in res.coords:
+            res.coords[k] = pd.RangeIndex(size)
 
     # Transpose to ignore dimensions order
     res = res.transpose(*sorted(res.dims, key=str))
-
-    # Finally stack everything back together
-    if brief_dims != "all":
-        stack_dims = sorted(set(res.dims) - set(brief_dims), key=str)
-        if stack_dims:
-            res = res.stack(__stacked__=stack_dims)
 
     # Prevent infinite recursion - see cast_dataarray()
     res.attrs["__strip_dataarray__"] = True

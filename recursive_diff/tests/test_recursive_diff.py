@@ -9,6 +9,8 @@ import xarray
 from recursive_diff import cast, recursive_diff
 from recursive_diff.tests import (
     PANDAS_GE_200,
+    PANDAS_GE_300,
+    XARRAY_GE_2025_1_2,
     filter_old_numpy_warnings,
     requires_dask,
     requires_netcdf,
@@ -47,7 +49,7 @@ class Drawing:
 
 @cast.register(Rectangle)
 @cast.register(Drawing)
-def _(obj, brief_dims):  # noqa: ARG001
+def _(obj):
     return {"w": obj.w, "h": obj.h}
 
 
@@ -281,8 +283,8 @@ def test_numpy():
     check(
         np.array([1.0, 2.0, 3.01, 4.0001, 5.0]),
         np.array([1, 4, 3, 4], dtype=np.int64),
-        "[data][1]: 2.0 != 4.0 (abs: 2.0e+00, rel: 1.0e+00)",
-        "[data][2]: 3.01 != 3.0 (abs: -1.0e-02, rel: -3.3e-03)",
+        "[data][1]: 2.0 != 4 (abs: 2.0e+00, rel: 1.0e+00)",
+        "[data][2]: 3.01 != 3 (abs: -1.0e-02, rel: -3.3e-03)",
         "[dim_0]: LHS has 1 more elements than RHS",
         "object type differs: ndarray<float64> != ndarray<int64>",
         abs_tol=0.001,
@@ -299,11 +301,12 @@ def test_numpy():
     )
 
     # array of numbers vs. dates; mismatched size
+    subsecond = "000000" if PANDAS_GE_300 else "000000000"
     check(
         np.array([1, 2], dtype=np.int64),
         pd.to_datetime(["2000-01-01", "2000-01-02", "2000-01-03"]).values,
-        "[data][0]: 1 != 2000-01-01 00:00:00",
-        "[data][1]: 2 != 2000-01-02 00:00:00",
+        f"[data][0]: 1 != 2000-01-01T00:00:00.{subsecond}",
+        f"[data][1]: 2 != 2000-01-02T00:00:00.{subsecond}",
         "[dim_0]: RHS has 1 more elements than LHS",
         "object type differs: ndarray<int64> != ndarray<datetime64>",
     )
@@ -388,7 +391,7 @@ def test_numpy_string_slice(x, y):
     check(b, c)
 
 
-@pytest.mark.filterwarnings(
+@pytest.mark.filterwarnings(  # xarray < 2025.1.2
     "ignore:Converting non-nanosecond precision datetime:UserWarning"
 )
 def test_numpy_dates():
@@ -404,11 +407,48 @@ def test_numpy_dates():
             # differences in sub-type must be ignored
         ]
     ).values.astype("<M8[ns]")
+    subsecond = "" if PANDAS_GE_200 and XARRAY_GE_2025_1_2 else ".000000000"
     check(
         a,
         b,
-        "[data][1]: 2000-01-02 00:00:00 != 2000-01-04 00:00:00",
-        "[data][2]: 2000-01-03 00:00:00 != NaT",
+        f"[data][1]: 2000-01-02T00:00:00{subsecond} != 2000-01-04T00:00:00.000000000",
+        f"[data][2]: 2000-01-03T00:00:00{subsecond} != NaT",
+    )
+
+
+@pytest.mark.filterwarnings(  # xarray < 2025.1.2
+    "ignore:Converting non-nanosecond precision datetime:UserWarning"
+)
+def test_numpy_dates_ns():
+    """Test nanosecond accuracy of M8[ns]"""
+    a = pd.to_datetime(
+        ["2000-01-01T00:00:00.000000000", "2000-01-01T00:00:00.000000000"]
+    ).values
+    b = pd.to_datetime(
+        ["2000-01-01T00:00:00.000000000", "2000-01-01T00:00:00.000000001"]
+    ).values
+    check(
+        a,
+        b,
+        "[data][1]: 2000-01-01T00:00:00.000000000 != 2000-01-01T00:00:00.000000001",
+    )
+
+
+@pytest.mark.skipif(not XARRAY_GE_2025_1_2, reason="Requires xarray >= 2025.1.2")
+def test_numpy_dates_beyond_ns():
+    """M8[ns] supports dates from year 1677 to 2262. Test dates beyond this range."""
+    a = pd.to_datetime(
+        ["1500-01-01", "1500-01-02", "2300-01-01", "2300-01-02"]
+    ).values.astype("<M8[s]")
+    b = pd.to_datetime(
+        ["1500-01-01", "1500-01-03", "2300-01-01", "2300-01-03"]
+    ).values.astype("<M8[D]")
+    subsecond = "" if PANDAS_GE_200 else ".000000000"
+    check(
+        a,
+        b,
+        f"[data][1]: 1500-01-02T00:00:00{subsecond} != 1500-01-03T00:00:00{subsecond}",
+        f"[data][3]: 2300-01-02T00:00:00{subsecond} != 2300-01-03T00:00:00{subsecond}",
     )
 
 
@@ -625,7 +665,7 @@ def test_xarray(chunk):
         ds2 = ds2.chunk()
 
     # Older versions of Xarray don't have the 'Size 24B' bit
-    d1_str = str(ds1["d1"].stack({"__stacked__": ["x"]})).splitlines()[0].strip()
+    d1_str = str(ds1["d1"]).splitlines()[0].strip()
 
     check(
         ds1,
@@ -672,7 +712,7 @@ def test_xarray(chunk):
         "[attrs]: Pair attr3:new is in RHS only",
         "[attrs][attr1]: 1.0 != 1.0000001 (abs: 1.0e-07, rel: 1.0e-07)",
         "[coords][nonindex][x=x2]: ni2 != ni4",
-        "[data][x=x1, y=y1]: 4.0 != 4.0000004 (abs: 4.0e-07, rel: 1.0e-07)",
+        "[data][x=x1, y=y1]: 4 != 4.0000004 (abs: 4.0e-07, rel: 1.0e-07)",
         "[name]: foo != bar",
         "object type differs: DataArray<int64> != DataArray<float64>",
     )
@@ -750,14 +790,12 @@ def test_xarray_stacked(chunk):
     # while still pointing out the difference in stacking
     da2 = da1.copy(deep=True)
     da2[0, 0, 0] = 10
+    da1 = da1.stack(s=["x", "y"])
     da2 = da2.stack(s=["x", "y"])
     check(
         da1,
         da2,
-        "[data][x=x1, y=0, z=0]: 0 != 10 (abs: 1.0e+01, rel: nan)",
-        "[index]: Dimension s is in RHS only",
-        "[index]: Dimension x is in LHS only",
-        "[index]: Dimension y is in LHS only",
+        "[data][s=('x1', 0), z=0]: 0 != 10 (abs: 1.0e+01, rel: nan)",
     )
 
 
@@ -1109,7 +1147,9 @@ def test_lazy_datasets_without_dask(tmp_path):
     assert a2["v"]._in_memory
 
 
-@pytest.mark.xfail(reason="https://github.com/crusaderky/recursive_diff/issues/5")
+@pytest.mark.xfail(
+    reason="https://github.com/crusaderky/recursive_diff/issues/5", strict=False
+)
 @requires_dask
 @requires_netcdf
 @pytest.mark.slow

@@ -190,14 +190,17 @@ def main(
 
     logger.info("Comparing...")
     # In case of netCDF or Zarr:
-    # 1. Load a pair of variables from lhs and rhs fully into RAM
-    #    TODO: We could compare them chunk by chunk instead.
+    # 1. Load a pair of variables from lhs and rhs into RAM
     # 2. compare them
     # 3. print all differences
     # 4. free the RAM
     # 5. proceed to next pair of variables, or to the next file
-    # For all other file formats, if Dask is installed do the same file per file;
-    # otherwise, recursive_open already loaded everything eagerly into RAM.
+    # If Dask is installed, individual pairs of chunks are instead loaded, compared,
+    # and then released.
+    #
+    # For all other file formats, if Dask is installed each pair of files is loaded,
+    # compared, and released; if Dask is missing instead recursive_open already loaded
+    # everything eagerly into RAM.
     diff_iter = recursive_diff(
         lhs, rhs, abs_tol=args.atol, rel_tol=args.rtol, brief_dims=args.brief_dims
     )
