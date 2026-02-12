@@ -14,12 +14,12 @@ class MissingKeys(enum.Enum):
     to change behaviour when a key is missing left or right:
 
     {MissingKeys: MissingKeys.IGNORE}
-        Do not print a message about missing keys
+        Do not print a message about missing keys.
     {MissingKeys: MissingKeys.DIMENSION}
         Print message `Dimension {key} is in LHS/RHS only`.
         Do not print value.
     {MissingKeys: MissingKeys.PAIR} (default if nothing is present):
-        Pair {key}:{value} is in LHS/RHS only")
+        Print message `Pair {key}:{value} is in LHS/RHS only`.
     """
 
     IGNORE = enum.auto()
