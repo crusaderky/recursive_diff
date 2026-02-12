@@ -10,6 +10,15 @@ v1.4.0 (unreleased)
 - New functions :func:`open` and :func:`recursive_open` for opening files from the
   Python API
 - Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
+- :class:`pandas.Index` diffs are much faster and retain the original order, instead of
+  being sorted alphabetically
+- :class:`pandas.Index` now compare dtypes
+- :class:`pandas.MultiIndex` no longer compare names
+- Added support for NumPy and Pandas datetime objects too large for ``M8[ns]``
+  (before year 1677 or after 2262)
+
+Breaking CLI changes
+^^^^^^^^^^^^^^^^^^^^
 - The ``ncdiff`` CLI tool has been deprecated in favor of the new ``recursive-diff``
 - The ``recursive-diff`` CLI tool, in addition to netCDF, also supports and
   compares by default JSON, JSONL, MessagePack, YAML, and Zarr files
