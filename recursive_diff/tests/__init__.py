@@ -51,6 +51,7 @@ NUMPY_GE_126 = Version(np.__version__) >= Version("1.26")
 PANDAS_GE_200 = Version(pd.__version__) >= Version("2.0")
 PANDAS_GE_300 = Version(pd.__version__) >= Version("3.0")
 
+XARRAY_GE_2024_5_0 = Version(xarray.__version__) >= Version("2024.5.0")
 XARRAY_GE_2024_9_1 = Version(xarray.__version__) >= Version("2024.9.1")
 XARRAY_GE_2025_1_2 = Version(xarray.__version__) >= Version("2025.1.2")
 if XARRAY_GE_2024_9_1:

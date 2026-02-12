@@ -239,6 +239,23 @@ msgpack-python = "=1.0"
 PyYAML = "=5.4"
 zarr = "=2.15"
 
+# xarray 2024.5 is the first xarray release to be memory-efficient
+# when accessing large NetCDF and Zarr files
+[tool.pixi.feature.xarray2024-5.dependencies]
+python = "=3.9"
+numpy = "=1.23"
+pandas = "=2.0"
+xarray = "=2024.5.0"
+# Optional dependencies
+dask-core = "=2024.5.0"
+netcdf4 = "=1.6" # netCDF engine
+scipy = "=1.10" # netCDF engine
+h5netcdf = "=1.1" # netCDF engine
+h5py = "=3.8" # h5netcdf dependency
+msgpack-python = "=1.0"
+PyYAML = "=5.4"
+zarr = "=2.15"
+
 [tool.pixi.feature.upstream.dependencies]
 python = "=3.14"
 
@@ -269,6 +286,7 @@ dist = { features = ["dist"], no-default-feature = true }
 lint = { features = ["lint"] }
 docs = { features = ["py314", "docs"] }
 mindeps = { features = ["mindeps", "smoke", "tests"] }
+xarray2024-5 = { features = ["xarray2024-5", "smoke", "tests"] }
 py39 = { features = ["py39", "dask", "files", "smoke", "tests"] }
 py311 = { features = ["py311", "dask", "files", "smoke", "tests"] }
 py314 = { features = ["py314", "dask", "files", "smoke", "tests"] }
