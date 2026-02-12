@@ -1,5 +1,6 @@
 import json
 import os.path
+import sys
 from pathlib import Path
 
 import pytest
@@ -260,6 +261,5 @@ def test_recursive_open_threadsafe(tmp_path):
     """
     cwd = os.getcwd()
     assert cwd != str(tmp_path)
-    lhs = recursive_open(tmp_path)
+    assert recursive_open(tmp_path) == {}
     assert cwd == os.getcwd()
-
