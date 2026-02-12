@@ -10,6 +10,7 @@ import sys
 from collections.abc import Callable, Collection
 from typing import Any, Literal
 
+import dask
 import xarray
 
 FORMATS = ("json", "jsonl", "msgpack", "yaml", "yml", "netcdf", "nc", "zarr")
@@ -54,8 +55,14 @@ def _open_json(fname: str) -> Any:
         return json.load(f)
 
 
-@_maybe_delayed
-def _open_jsonl(fname: str) -> list:
+def _open_jsonl(fname: str, as_bag: bool = False) -> Any:
+    if as_bag:
+        import dask.bag
+
+        # Very rough guesstimate trying to match the 128 MiB/chunk default of
+        # dask.array after decoding JSON.
+        return dask.bag.read_text(fname, blocksize="64MB").map(json.loads)
+
     with builtins.open(fname) as f:
         return [json.loads(line) for line in f]
 
@@ -101,11 +108,17 @@ def open(
     actual data is delayed until later (typically until you feed the output of this
     function to :func:`~recursive_diff.recursive_diff` or
     :func:`~recursive_diff.recursive_eq`).
-    Other file formats are loaded eagerly unless you pass the `chunks` parameter.
 
-    JSONL files are loaded as pure-python lists, not with :func:`pandas.read_json` or
-    `dask.dataframe.read_json`. This allows better support for mismatched keys on
-    different lines.
+    JSONL files are loaded eagerly as pure-python lists, not with
+    :func:`pandas.read_json` or `dask.dataframe.read_json`. This allows better support
+    for mismatched keys on different lines. When chunks is not None, this function
+    returns a Dask bag, automatically chunked for large files, which is loaded and
+    decoded lazily at the point of comparison and then discarded.
+
+    JSON, MessagePack, and YAML files are also loaded eagerly when chunks=None. When
+    chunks is not None, this function returns a Delayed object which computes to the
+    entire file, which is loaded and decoded lazily at the point of comparison and then
+    discarded.
 
     :param str | pathlib.Path fname:
         path to file
@@ -113,17 +126,18 @@ def open(
         File format. Default: infer from file extension.
     :param chunks:
         Passed to :func:`xarray.open_dataset`. For files other than netCDF and Zarr, any
-        value other than None causes the function to return a dask delayed object.
+        value other than None causes the function to return a dask object.
     :param str netcdf_engine:
         netCDF engine (see :func:`xarray.open_dataset`). Ignored for other file formats.
         Default: use Xarray default depending on what is available.
     :returns:
         netCDF and Zarr files:
             :class:`xarray.Dataset`
-        other files, chunks is not None:
+        JSONL files:
+            list if chunks is not None, otherwise :class:`dask.bag.Bag`
+        JSON, YAML, and MessagePack files:
+            a pure-python object if chunks is not None, otherwise
             :class:`dask.delayed.Delayed`
-        other files, chunks=None:
-            a pure-python object.
 
         The output can be passed as either the ``lhs`` or ``rhs`` argument to
         :func:`~recursive_diff.recursive_diff` or :func:`~recursive_diff.recursive_eq`.

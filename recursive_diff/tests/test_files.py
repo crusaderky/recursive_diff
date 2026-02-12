@@ -2,7 +2,9 @@ import json
 import os.path
 import sys
 from pathlib import Path
+import sys
 
+from concurrent.futures import ThreadPoolExecutor
 import pytest
 import xarray
 from xarray.testing import assert_equal
@@ -60,6 +62,21 @@ def test_open_jsonl(tmp_path, path_type, chunks):
     if chunks is not None:
         b = b.compute()
     assert b == a
+
+
+@requires_dask
+@pytest.mark.slow
+def test_open_large_jsonl_as_chunked_bags(tmp_path):
+    with open(tmp_path / "test.jsonl", "w") as f:
+        # 25k lines, 9.8kib/line, ~238 MiB total
+        for i in range(25_000): 
+            json.dump({"x" * 10_000: i}, f)
+            f.write("\n")
+
+    a = rdopen(tmp_path / "test.jsonl", chunks="auto")
+    breakpoint()
+    # 64 MiB/text chunk, which will grow after decoding JSON.
+    assert a.npartitions == 3
 
 
 def test_open_yaml(tmp_path, path_type, chunks):

@@ -1,6 +1,7 @@
 """Support dask-backed Xarray objects, if dask is installed"""
 
 try:
+    from dask.bag import Bag
     from dask.delayed import Delayed
 
     def is_dask_collection(x: object) -> bool:
@@ -8,6 +9,9 @@ try:
         return bool(f()) if f is not None else False
 
 except ImportError:
+
+    class Bag: # type: ignore[no-redef] 
+        pass
 
     class Delayed:  # type: ignore[no-redef]
         pass
