@@ -3,12 +3,24 @@
 What's New
 ==========
 
-v1.4.0 (unreleased)
+v2.0.0 (unreleased)
 -------------------
 
-- Added **JSON**, **JSONL**, **MessagePack**, **YAML**, and **Zarr** support
+This release completely overhauls the diff engine, for up to a 300x speed-up when
+comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
+**YAML**, and **Zarr**.
+
 - New functions :func:`open` and :func:`recursive_open` for opening files from the
-  Python API
+  Python API, supporting JSON, JSONL, MessagePack, YAML, NetCDF and Zarr
+  file formats.
+- Dask-backed Xarray objects are now compared chunk by chunk instead of loading an
+  entire pair of variables into memory at once.
+- Added support for Dask delayed objects.
+- When multiple Dask objects are compared, they are compared all at once using the
+  available Dask threads instead of one variable at a time. This should result in
+  speed-ups disk reads are pipelined with comparisons. However it can also result in
+  higher memory usage depending on available CPUs and disk read speeds; you can control
+  it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
 - Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
 - :class:`pandas.Index` diffs are much faster and retain the original order, instead of
   being sorted alphabetically
@@ -37,6 +49,10 @@ Breaking CLI changes
        recursive-diff -r dir1 dir2 -m "foo*.nc"  # valid
 
 - The ``recursive-diff`` CLI tool no longer requires Dask to be installed.
+
+Other breaking changes
+^^^^^^^^^^^^^^^^^^^^^^
+- :func:`cast` no longer accepts the ``brief_dims`` argument
 
 
 v1.3.0 (2025-10-14)

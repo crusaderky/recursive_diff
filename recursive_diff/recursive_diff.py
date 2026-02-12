@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Collection, Hashable, Iterator
+from collections.abc import Collection, Generator, Hashable
 from contextlib import suppress
 from typing import Any, Literal
 
@@ -17,7 +17,7 @@ import pandas as pd
 import xarray
 
 from recursive_diff.cast import cast
-from recursive_diff.dask_compat import compute, is_dask_collection, is_dask_delayed
+from recursive_diff.dask_compat import Delayed, is_dask_collection
 
 PANDAS_GE_200 = int(pd.__version__.split(".")[0]) >= 2
 
@@ -48,7 +48,7 @@ def recursive_diff(
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
     brief_dims: Collection[Hashable] | Literal["all"] = (),
-) -> Iterator[str]:
+) -> Generator[str]:
     """Compare two objects and yield all differences.
     The two objects must any of:
 
@@ -61,6 +61,7 @@ def recursive_diff(
     - :class:`pandas.Index`
     - :class:`xarray.DataArray`
     - :class:`xarray.Dataset`
+    - :class:`dask.delayed.Delayed`
     - any recursive combination of the above
     - any other object (compared with ==)
 
@@ -105,7 +106,14 @@ def recursive_diff(
     Yields strings containing difference messages, prepended by the path to
     the point that differs.
     """
-    yield from _recursive_diff(
+    # For as long as we don't encounter any Delayed or dask-backed xarray objects in lhs
+    # or rhs, yield diff messages directly from the recursive generator, without
+    # accumulating them. This allows to start printing differences as soon as they are
+    # found, without waiting for the whole recursion to finish. Once we encounter a
+    # Delayed or dask-backed xarray object, we start accumulating all eager messages and
+    # Delayed[list[str]] in a list and compute all the delayeds at once.
+    diffs: list[str | Delayed] = []
+    for diff in _recursive_diff(
         lhs,
         rhs,
         rel_tol=rel_tol,
@@ -114,9 +122,32 @@ def recursive_diff(
         path=[],
         seen_lhs=[],
         seen_rhs=[],
-        suppress_type_diffs=False,
-        join="inner",
-    )
+    ):
+        if diffs or isinstance(diff, Delayed):
+            diffs.append(diff)
+        else:
+            yield diff
+
+    if not diffs:
+        return
+
+    import dask
+
+    # Override default scheduler for Delayed, which would be multiprocessing.
+    # We use Delayed to post-process the comparison of Dask-backed Xarrays.
+
+    # This has the disadvantage that JSON, JSONL, YAML, and MessagePack files
+    # comparison contends for the GIL. Eventually this problem will go away once
+    # free-threading becomes the norm.
+    scheduler = dask.config.get("scheduler", "threads")
+    computed_diff: str | list[str]
+    (computed_diffs,) = dask.compute(diffs, scheduler=scheduler)
+    for computed_diff in computed_diffs:
+        if isinstance(computed_diff, list):
+            # From a Delayed
+            yield from computed_diff
+        else:
+            yield computed_diff
 
 
 def _recursive_diff(
@@ -125,13 +156,11 @@ def _recursive_diff(
     *,
     rel_tol: float,
     abs_tol: float,
-    brief_dims: Collection[Hashable] | str,
+    brief_dims: Collection[Hashable] | Literal["all"],
     path: list[object],
     seen_lhs: list[int],
     seen_rhs: list[int],
-    suppress_type_diffs: bool,
-    join: Literal["inner", "outer"],
-) -> Iterator[str]:
+) -> Generator[str | Delayed]:  # yields str | Delayed[list[str]]
     """Recursive implementation of :func:`recursive_diff`
 
     :param list path:
@@ -140,12 +169,6 @@ def _recursive_diff(
         list of id() of all lhs objects traversed so far, to detect cycles
     param list[int] seen_rhs:
         list of id() of all rhs objects traversed so far, to detect cycles
-    :param bool suppress_type_diffs:
-        if True, don't print out messages about differences in type
-    :param str join:
-        join type of numpy objects: 'inner' or 'outer'.
-        Ignored for plain Python collections (set, dict, etc.) for which
-        outer join is always applied.
 
     This function calls itself recursively for all elements of numpy-based
     data, list, tuple, and dict.values(). Every time, it appends to the
@@ -187,36 +210,34 @@ def _recursive_diff(
         seen_rhs = [*seen_rhs, id(rhs)]
     # End of recursion detection
 
+    if isinstance(lhs, Delayed) or isinstance(rhs, Delayed):
+        from dask import delayed
+
+        @delayed
+        def _recursive_diff_d(*args, **kwargs):  # type: ignore[no-untyped-def]
+            return list(_recursive_diff(*args, **kwargs))
+
+        yield _recursive_diff_d(
+            lhs,
+            rhs,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+            brief_dims=brief_dims,
+            path=path,
+            seen_lhs=[],
+            seen_rhs=[],
+        )
+        return
+
     # Build string representation of the two variables *before* casting
     lhs_repr = _str_trunc(lhs)
     rhs_repr = _str_trunc(rhs)
 
-    # Identify if the variables are indices that must go through outer join,
-    # *before* casting. This will be propagated downwards into the recursion.
-    if join == "inner" and are_instances(lhs, rhs, pd.Index):
-        join = "outer"
-
-    if (
-        are_instances(lhs, rhs, xarray.DataArray)
-        and "__strip_dataarray__" in lhs.attrs
-        and "__strip_dataarray__" in rhs.attrs
-    ):
-        # Don't repeat dtype comparisons
-        suppress_type_diffs = True
-
-    if is_dask_delayed(lhs):
-        if is_dask_delayed(rhs):
-            lhs, rhs = compute(lhs, rhs)
-        else:
-            lhs = lhs.compute()
-    elif is_dask_delayed(rhs):
-        rhs = rhs.compute()
-
     # cast lhs and rhs to simpler data types; pretty-print data type
     dtype_lhs = _dtype_str(lhs)
     dtype_rhs = _dtype_str(rhs)
-    lhs = cast(lhs, brief_dims=brief_dims)
-    rhs = cast(rhs, brief_dims=brief_dims)
+    lhs = cast(lhs)
+    rhs = cast(rhs)
 
     # 1.0 vs. 1 must not be treated as a difference
     if isinstance(lhs, int) and isinstance(rhs, float):
@@ -231,11 +252,15 @@ def _recursive_diff(
     # When comparing an array vs. a plain python list or scalar, log an error
     # for the different dtype and then proceed to compare the contents
     if is_array(dtype_lhs) and is_array_like(dtype_rhs):
-        rhs = cast(np.array(rhs), brief_dims=brief_dims)
+        rhs = cast(np.array(rhs))
     elif is_array(dtype_rhs) and is_array_like(dtype_lhs):
-        lhs = cast(np.array(lhs), brief_dims=brief_dims)
+        lhs = cast(np.array(lhs))
 
-    if dtype_lhs != dtype_rhs and not suppress_type_diffs:
+    if dtype_lhs != dtype_rhs and not (
+        are_instances(lhs, rhs, xarray.DataArray)
+        and "__strip_dataarray__" in lhs.attrs
+        and "__strip_dataarray__" in rhs.attrs
+    ):
         yield diff(f"object type differs: {dtype_lhs} != {dtype_rhs}")
 
     # Continue even in case dtype doesn't match
@@ -262,8 +287,6 @@ def _recursive_diff(
                 path=[*path, i],
                 seen_lhs=seen_lhs,
                 seen_rhs=seen_rhs,
-                suppress_type_diffs=suppress_type_diffs,
-                join=join,
             )
 
     elif are_instances(lhs, rhs, set):
@@ -338,8 +361,6 @@ def _recursive_diff(
                 path=[*path, key],
                 seen_lhs=seen_lhs,
                 seen_rhs=seen_rhs,
-                suppress_type_diffs=suppress_type_diffs,
-                join=join,
             )
 
     elif are_instances(lhs, rhs, bool):
@@ -362,173 +383,14 @@ def _recursive_diff(
             yield diff(f"{lhs} != {rhs} (abs: {rhs - lhs:.1e}, rel: {rel_delta:.1e})")
 
     elif are_instances(lhs, rhs, xarray.DataArray):
-        # This block is executed for all data that was originally:
-        # - numpy.ndarray
-        # - pandas.Series
-        # - pandas.DataFrame
-        # - xarray.DataArray
-        # - xarray.Dataset
-        # - any of the above, compared against a plain Python list
-
-        # Both DataArrays are guaranteed by _strip_dataarray to be either
-        # ravelled on a single dim with a MultiIndex or 0-dimensional
-
-        lhs_dims = _get_stripped_dims(lhs)
-        rhs_dims = _get_stripped_dims(rhs)
-
-        if lhs_dims != rhs_dims:
-            # This is already reported elsewhere when comparing dicts
-            # (Dimension x is in LHS only)
-            pass
-
-        elif lhs.dims:
-            # Align to guarantee that the index is identical on both sides.
-            # Change the order as needed. Fill the gaps with NaNs.
-            # Index variables go through an outer join, whereas data variables
-            # and non-index coords use an inner join. This avoids creating
-            # spurious NaNs in the data variable and only reporting missing
-            # elements only once.
-            lhs, rhs = xarray.align(lhs, rhs, join=join)
-
-            # Build array of bools that highlight all differences, use it to
-            # filter the two inputs, and finally convert only the differences
-            # to pure python. This is MUCH faster than iterating on all
-            # elements in the case where most elements are identical.
-            if lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
-                # Both arrays are numeric
-                # i = int8, int16, int32, int64
-                # u = uint8,uint16, uint32, uint64
-                # f = float32, float64
-                # c = complex64, complex128
-                if is_dask_collection(lhs) or is_dask_collection(rhs):
-                    import dask.array as da
-
-                    isclose = da.isclose
-                else:
-                    isclose = np.isclose
-
-                diffs = ~isclose(
-                    lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True
-                )
-
-            elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
-                # Both arrays are datetime64
-                # Unlike with np.isclose(equal_nan=True), there is no
-                # straightforward way to do a comparison of dates where
-                # NaT == NaT returns True.
-                # All datetime64's, including NaT, can be cast to milliseconds
-                # since 1970-01-01 (NaT is a special hardcoded value).
-                # We must first normalise the subtype, so that you can
-                # transparently compare e.g. <M8[ns] vs. <M8[D]
-                lhs_int = lhs.data.astype("<M8[ns]").astype(int)
-                rhs_int = rhs.data.astype("<M8[ns]").astype(int)
-                diffs = lhs_int != rhs_int
-
-            else:
-                # At least one between lhs and rhs is non-numeric,
-                # e.g. bool or str
-                diffs = lhs.data != rhs.data
-
-                # NumPy <1.26:
-                # Comparison between two non-scalar, incomparable types
-                # (like strings and numbers) returns True
-                # FutureWarning: elementwise comparison failed; returning scalar
-                # instead, but in the future will perform elementwise comparison
-                if diffs is True:
-                    diffs = np.ones(lhs.shape, dtype=bool)
-
-            # if is_dask_collection(lhs) or is_dask_collection(rhs):
-            #     assert is_dask_collection(diffs)
-
-            if diffs.ndim > 1 and lhs.dims[-1] == "__stacked__":
-                # N>0 original dimensions, some (but not all) of which are in
-                # brief_dims
-                assert brief_dims
-                # Produce diffs count along brief_dims
-                diffs = diffs.astype(int).sum(axis=tuple(range(diffs.ndim - 1)))
-                # Reattach original coords
-                diffs_da = xarray.DataArray(
-                    diffs,
-                    dims=["__stacked__"],
-                    coords={"__stacked__": lhs.coords["__stacked__"]},
-                )
-                # Potentially load from disk and compute the result
-                diffs_da = diffs_da.compute()
-                # Filter out identical elements
-                diffs_da = diffs_da[diffs_da != 0]
-                # Convert the diff count to plain dict with the original coords
-                diffs_dict = _dataarray_to_dict(diffs_da)
-                for k, count in sorted(diffs_dict.items()):
-                    yield diff(f"{count} differences", print_path=[*path, k])
-
-            elif "__stacked__" not in lhs.dims:
-                # N>0 original dimensions, all of which are in brief_dims
-
-                # Produce diffs count along brief_dims
-                (count,) = compute(diffs.astype(int).sum())
-                if count:
-                    yield diff(f"{count} differences")
-            else:
-                # N>0 original dimensions, none of which are in brief_dims
-
-                # Filter out identical elements
-                if is_dask_collection(diffs):
-                    # Can't filter a DataArray with a dask boolean mask,as indices
-                    # are always eager
-                    lhs_data = lhs.data[diffs]
-                    rhs_data = rhs.data[diffs]
-                    lhs_data, rhs_data, diffs = compute(lhs_data, rhs_data, diffs)
-                    lhs = lhs[diffs]
-                    lhs.data = lhs_data
-                    rhs = rhs[diffs]
-                    rhs.data = rhs_data
-                else:
-                    lhs = lhs[diffs]
-                    rhs = rhs[diffs]
-
-                # Convert the original arrays to plain dict
-                lhs = _dataarray_to_dict(lhs)
-                rhs = _dataarray_to_dict(rhs)
-
-                if join == "outer":
-                    # We're here showing the differences of two non-range
-                    # indices, aligned on themselves. All dict values are NaN
-                    # by definition, so we can print a terser output by
-                    # converting the dicts to sets.
-                    lhs = {k for k, v in lhs.items() if not pd.isnull(v)}
-                    rhs = {k for k, v in rhs.items() if not pd.isnull(v)}
-
-                # Finally dump out all the differences
-                yield from _recursive_diff(
-                    lhs,
-                    rhs,
-                    rel_tol=rel_tol,
-                    abs_tol=abs_tol,
-                    brief_dims=brief_dims,
-                    path=path,
-                    seen_lhs=seen_lhs,
-                    seen_rhs=seen_rhs,
-                    suppress_type_diffs=True,
-                    join=join,
-                )
-
-        else:
-            # 0-dimensional arrays
-            assert lhs.dims == ()
-            assert rhs.dims == ()
-            lhs, rhs = compute(lhs, rhs)
-            yield from _recursive_diff(
-                lhs.values.tolist(),
-                rhs.values.tolist(),
-                rel_tol=rel_tol,
-                abs_tol=abs_tol,
-                brief_dims=brief_dims,
-                path=path,
-                seen_lhs=seen_lhs,
-                seen_rhs=seen_rhs,
-                suppress_type_diffs=True,
-                join=join,
-            )
+        yield from _diff_dataarrays(
+            lhs,
+            rhs,
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+            brief_dims=brief_dims,
+            path=path,
+        )
 
     else:
         # unknown objects
@@ -558,19 +420,295 @@ def _str_trunc(x: object) -> str:
     return x.splitlines()[0][:76] + " ..."
 
 
-def _get_stripped_dims(a: xarray.DataArray) -> list[Hashable]:
-    """Helper function of :func:`recursive_diff`.
-
-    :param xarray.DataArray a:
-        array that has been stripped with :func:`_strip_dataarray`
-    :returns:
-        list of original dims, sorted alphabetically
+def _diff_dataarrays(
+    lhs: xarray.DataArray,
+    rhs: xarray.DataArray,
+    rel_tol: float,
+    abs_tol: float,
+    brief_dims: Collection[Hashable] | Literal["all"],
+    path: list[object],
+) -> Generator[str | Delayed]:  # str | Delayed[list[str]]
     """
-    if "__stacked__" in a.dims:
-        res = set(a.coords["__stacked__"].to_index().names)
-        res |= set(a.dims) - {"__stacked__"}
-        return sorted(res)
-    return list(a.dims)
+    Compare two DataArrays, previously prepared by _strip_dataarray.
+
+    This function is executed for all data that was originally:
+
+    - numpy.ndarray
+    - pandas.Series
+    - pandas.DataFrame
+    - xarray.DataArray
+    - xarray.Dataset
+    - any of the above, compared against a plain Python list
+    """
+    # Note: lhs.dims and rhs.dims were aligned by _strip_dataarray
+    if lhs.dims != rhs.dims:
+        # This is already reported elsewhere when comparing dicts
+        # (Dimension x is in LHS only)
+        return
+
+    if not lhs.dims:
+        # 0-dimensional arrays
+        yield from _recursive_diff(
+            _array0d_to_scalar(lhs),
+            _array0d_to_scalar(rhs),
+            rel_tol=rel_tol,
+            abs_tol=abs_tol,
+            brief_dims=(),
+            path=path,
+            seen_lhs=[],
+            seen_rhs=[],
+        )
+        return
+
+    # Align to guarantee that the index is identical on both sides.
+    # Change the order as needed.
+    lhs, rhs = xarray.align(lhs, rhs, join="inner")
+
+    if is_dask_collection(lhs) or is_dask_collection(rhs):
+        import dask.array as da
+
+        is_dask = True
+        isclose = da.isclose
+        arange = da.arange
+        broadcast_to = da.broadcast_to
+    else:
+        is_dask = False
+        isclose = np.isclose
+        arange = np.arange  # type: ignore[assignment]
+        broadcast_to = np.broadcast_to  # type: ignore[assignment]
+
+    # Generate a bit-mask of the differences
+    # For Dask-backed arrays, this operation is delayed.
+    if lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
+        # Both arrays are numeric
+        mask = ~isclose(lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
+    elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
+        # Both arrays are datetime64
+        # Unlike with np.isclose(equal_nan=True), there is no
+        # straightforward way to do a comparison of dates where
+        # NaT == NaT returns True.
+        mask = (lhs.data != rhs.data) & ~(np.isnat(lhs.data) & np.isnat(rhs.data))
+    else:
+        # At least one between lhs and rhs is non-numeric,
+        # e.g. bool or str
+        mask = lhs.data != rhs.data
+
+        # NumPy <1.26:
+        # `lhs != rhs` between two non-scalar, incomparable types
+        # (like strings and numbers) returns True
+        # FutureWarning: elementwise comparison failed; returning scalar
+        # instead, but in the future will perform elementwise comparison
+        if mask is True:
+            mask = np.ones(lhs.shape, dtype=bool)
+
+    if brief_dims == "all":
+        brief_axes = set(range(lhs.ndim))
+    else:
+        brief_dims = set(brief_dims)
+        brief_axes = {axis for axis, dim in enumerate(lhs.dims) if dim in brief_dims}
+    del brief_dims
+
+    full_coords = {
+        dim: lhs.coords[dim]
+        for axis, dim in enumerate(lhs.dims)
+        if axis not in brief_axes
+    }
+
+    # Generate:
+    # If brief_dims and lhs.dims are fully disjoint:
+    #   - 1D NumPy array of only the elements in lhs that differ from rhs
+    #   - 1D NumPy array of only the elements in rhs that differ from lhs
+    # If at least one dimension is in brief_dims:
+    #   - 1D NumPy array of the count of the differences along all brief_dims,
+    #     with size equal to the flattened non-brief dims.
+    # Plus:
+    # - one 1D NumPy array of the indices of the elements that differ, one per
+    #   non-brief dim, with potentially repeated indices
+    # All of the arrays will have the same size, which is the number of differences.
+    # For Dask-backed arrays, this whole operation is delayed.
+
+    if brief_axes:
+        diffs_count = mask.astype(int).sum(axis=tuple(brief_axes))
+        mask = diffs_count > 0
+        if mask.ndim:
+            diffs_count = diffs_count[mask]
+    else:
+        diffs_lhs = lhs.data[mask]
+        diffs_rhs = rhs.data[mask]
+
+    diffs_idx = []
+    for axis, size in enumerate(mask.shape):
+        if axis not in brief_axes:
+            idx = arange(size)
+            idx = idx.reshape(*[1] * axis, -1, *[1] * (mask.ndim - axis - 1))
+            idx = broadcast_to(idx, mask.shape)
+            idx = idx[mask]
+            diffs_idx.append(idx)
+
+    msg_prefix = "".join(f"[{elem}]" for elem in path)
+
+    args: tuple
+    if brief_axes:
+        pp_func = _diff_dataarrays_print_brief
+        args = (diffs_count, diffs_idx, full_coords, msg_prefix)  # type: ignore[possibly-undefined]
+    else:
+        pp_func = _diff_dataarrays_print_full  # type: ignore[assignment]
+        args = (diffs_lhs, diffs_rhs, diffs_idx, full_coords, msg_prefix)  # type: ignore[possibly-undefined]
+
+    if is_dask:
+        from dask import delayed
+
+        yield delayed(pp_func)(*args)
+
+    else:
+        yield from pp_func(*args)
+
+
+def _diff_dataarrays_print_full(
+    diffs_lhs: np.ndarray,
+    diffs_rhs: np.ndarray,
+    diffs_idx: list[np.ndarray],
+    coords: dict[Hashable, xarray.DataArray],
+    msg_prefix: str,
+) -> list[str]:
+    """Final step of diffing two DataArrays, for when brief_dims is disjoint from
+    the array's dims.
+
+    The data has all been loaded to disk and compared by _diff_dataarrays.
+    If there was a Dask backend, the Dask arrays have been computed by delayed() into
+    NumPy arrays.
+
+    All arrays are one-dimensional aligned and same-sized np.ndarray objects, one point
+    per diff to be returned.
+
+    :param diffs_lhs:
+        Array of the values of the elements that differ in lhs from rhs.
+    :param diffs_rhs:
+        Array of the values of the elements that differ in rhs from lhs.
+    :param diffs_idx:
+        List of arrays of the indices of the elements that differ, one array per
+        non-brief dimension, with potentially repeated indices.
+    :param coords:
+        dict of {dim: coord} of the non-brief indices, in the same order as diffs_idx
+    :param msg_prefix:
+        string to prepend to all messages
+    """
+    assert isinstance(diffs_lhs, np.ndarray)
+    assert isinstance(diffs_rhs, np.ndarray)
+    ndiff = diffs_lhs.size
+    assert diffs_rhs.size == ndiff
+    if not ndiff:
+        return []
+
+    if diffs_lhs.dtype.kind in "iufc" and diffs_rhs.dtype.kind in "iufc":
+        with_tol = True
+        diffs_abs = diffs_rhs - diffs_lhs
+        with np.errstate(divide="ignore", invalid="ignore"):
+            diffs_rel = diffs_rhs / diffs_lhs - 1
+        # Replace inf with nan, in alignment with floats comparison
+        diffs_rel = np.where(diffs_lhs == 0, np.nan, diffs_rel)
+    else:
+        with_tol = False
+        diffs_abs = range(ndiff)  # dummy
+        diffs_rel = range(ndiff)  # dummy
+
+    assert len(diffs_idx) == len(coords)
+    for idx in diffs_idx:
+        assert idx.size == ndiff
+    diffs_coords_iters = [
+        coord[idx].values for coord, idx in zip(coords.values(), diffs_idx)
+    ]
+    dim_tags = [
+        # Prettier output when there was no coord at the beginning,
+        # e.g. with plain numpy arrays
+        re.sub(r"^dim_\d=$", "", f"{dim}=")
+        for dim in coords
+    ]
+
+    # Can't use a generator as this function may be delayed
+    diff_msgs = []
+
+    for lhs_value, rhs_value, abs_value, rel_value, *diff_coords in zip(
+        diffs_lhs,
+        diffs_rhs,
+        diffs_abs,
+        diffs_rel,
+        *diffs_coords_iters,
+    ):
+        addr = ", ".join(f"{dim_tag}{i}" for dim_tag, i in zip(dim_tags, diff_coords))
+        msg = f"{msg_prefix}[{addr}]: {lhs_value} != {rhs_value}"
+        if with_tol:
+            msg += f" (abs: {abs_value:.1e}, rel: {rel_value:.1e})"
+        diff_msgs.append(msg)
+
+    return diff_msgs
+
+
+def _diff_dataarrays_print_brief(
+    diffs_count: np.ndarray,
+    diffs_idx: list[np.ndarray],
+    coords: dict[Hashable, xarray.DataArray],
+    msg_prefix: str,
+) -> list[str]:
+    """Variant of _diff_dataarrays_print_brief for when there is at least one brief dim.
+
+    The data has all been loaded to disk and compared by _diff_dataarrays.
+    If there was a Dask backend, the Dask arrays have been computed by delayed() into
+    NumPy arrays.
+
+    All arrays are one-dimensional aligned and same-sized np.ndarray objects, one point
+    per diff to be returned.
+
+    :param diffs_count:
+        Array of the count of differences along all brief_dims, one point per non-brief
+        dim, flattened.
+    :param diffs_idx:
+        List of arrays of the indices of the elements that differ, one array per
+        non-brief dimension, with potentially repeated indices.
+    :param coords:
+        dict of {dim: coord} of the non-brief indices, in the same order as diffs_idx
+    :param msg_prefix:
+        string to prepend to all messages
+    """
+    ndiff = diffs_count.size
+
+    for idx in diffs_idx:
+        assert idx.size == ndiff
+
+    if not diffs_count.ndim:
+        # Scalar outcome of brief_dims collapsing all dimensions
+        if diffs_count:
+            return [f"{msg_prefix}: {diffs_count} differences"]
+        return []
+
+    diffs_coords = [coord[idx].values for coord, idx in zip(coords.values(), diffs_idx)]
+    dim_tags = [
+        # Prettier output when there was no coord at the beginning,
+        # e.g. with plain numpy arrays
+        re.sub(r"^dim_\d=$", "", f"{dim}=")
+        for dim in coords
+    ]
+
+    # Can't use a generator as this function may be delayed
+    diff_msgs = []
+
+    for count, *diff_coords in zip(diffs_count, *diffs_coords):
+        addr = ", ".join(f"{dim_tag}{i}" for dim_tag, i in zip(dim_tags, diff_coords))
+        diff_msgs.append(f"{msg_prefix}[{addr}]: {count} differences")
+
+    return diff_msgs
+
+
+def _array0d_to_scalar(x: xarray.DataArray) -> Any:
+    """Convert a 0-dimensional DataArray to either its item
+    or a dask delayed that returns the item.
+    """
+    assert not x.dims
+    if is_dask_collection(x):
+        from dask import delayed
+
+        return delayed(lambda x_np: x_np.item())(x.data)
+    return x.data.item()
 
 
 def _dtype_str(obj: object) -> str:
@@ -607,10 +745,6 @@ def _dtype_str(obj: object) -> str:
         and not isinstance(obj, (pd.MultiIndex, pd.RangeIndex))
     ):
         np_dtype = obj.dtype
-    elif isinstance(obj, pd.DataFrame):
-        # TODO: support for DataFrames with different dtypes on different
-        # columns. See also cast(obj: pd.DataFrame)
-        np_dtype = obj.values.dtype
     else:
         np_dtype = None
 
@@ -622,30 +756,3 @@ def _dtype_str(obj: object) -> str:
             np_dtype = "datetime64"
         return f"{dtype}<{np_dtype}>"
     return dtype
-
-
-def _dataarray_to_dict(a: xarray.DataArray) -> dict[str, Any]:
-    """Helper function of :func:`recursive_diff`.
-    Convert a DataArray prepared by :func:`_strip_dataarray` to a plain
-    Python dict.
-
-    :param a:
-        :class:`xarray.DataArray` which has exactly 1 dimension,
-        no non-index coordinates, and a MultiIndex on its dimension.
-    :returns:
-        Plain python dict, where the keys are a string representation
-        of the points of the MultiIndex.
-
-    .. note::
-       Order will be discarded. Duplicate coordinates are not supported.
-    """
-    assert a.dims == ("__stacked__",)
-    dims = a.coords["__stacked__"].to_index().names
-    res = {}
-    for idx, val in a.to_pandas().items():
-        key = ", ".join(f"{d}={i}" for d, i in zip(dims, idx))
-        # Prettier output when there was no coord at the beginning,
-        # e.g. with plain numpy arrays
-        key = re.sub(r"dim_\d+=", "", key)
-        res[key] = val
-    return res

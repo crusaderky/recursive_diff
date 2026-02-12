@@ -35,7 +35,7 @@ function::
 
     >>> from recursive_diff import cast
     >>> @cast.register(Rectangle)
-    ... def _(obj, brief_dims):
+    ... def _(obj):
     ...     return {'w': obj.w, 'h': obj.h}
 
 After doing so, w and h will be compared with tolerance and, if they are
