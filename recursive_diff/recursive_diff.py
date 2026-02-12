@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Collection, Generator, Hashable
-from contextlib import suppress
 from typing import Any, Literal
 
 import numpy as np
