@@ -460,18 +460,32 @@ def test_pandas_index():
     # Regular index
     # Test that order is ignored
     # Use huge abs_tol and rel_tol to test that tolerance is ignored
+    int_index = "Index<int64>" if PANDAS_GE_200 else "Int64Index"
+    float_index = "Index<float64>" if PANDAS_GE_200 else "Float64Index"
     check(
         pd.Index([1, 2, 3, 4]),
         pd.Index([1, 3.000001, 2]),
-        "3.0 is in LHS only",
+        "3 is in LHS only",
         "3.000001 is in RHS only",
-        "4.0 is in LHS only",
-        "" if PANDAS_GE_200 else "object type differs: Int64Index != Float64Index",
+        "4 is in LHS only",
+        f"object type differs: {int_index} != {float_index}",
         rel_tol=10,
         abs_tol=10,
     )
 
     check(pd.Index(["x", "y", "z"]), pd.Index(["y", "x"]), "z is in LHS only")
+
+
+def test_pandas_index_numeric_vs_object():
+    int_index = "Index<int64>" if PANDAS_GE_200 else "Int64Index"
+    obj_index = "Index<object>" if PANDAS_GE_200 else "Index"
+    check(
+        pd.Index([1, 2, 3]),
+        pd.Index([1, "3", 2]),
+        "3 is in LHS only",
+        "3 is in RHS only",
+        f"object type differs: {int_index} != {obj_index}",
+    )
 
 
 def test_pandas_rangeindex():
@@ -505,7 +519,7 @@ def test_pandas_rangeindex():
     )
 
     # RangeIndex vs regular index
-    int_index = "Index" if PANDAS_GE_200 else "Int64Index"
+    int_index = "Index<int64>" if PANDAS_GE_200 else "Int64Index"
     check(
         pd.RangeIndex(4),
         pd.Index([0, 1, 2]),
@@ -524,28 +538,33 @@ def test_pandas_rangeindex():
 
 def test_pandas_multiindex():
     lhs = pd.MultiIndex.from_tuples(
-        [("bar", "one"), ("bar", "two"), ("baz", "one")], names=["l1", "l2"]
+        [("bar", "one"), ("bar", "two"), ("baz", "one")],
+        names=["l1", "l2"],
     )
     rhs = pd.MultiIndex.from_tuples(
         [("baz", "one"), ("bar", "three"), ("bar", "one"), ("baz", "four")],
-        names=["l1", "l3"],
+        names=["l1", "l3"],  # Differences in names are ignored
     )
     check(
         lhs,
         rhs,
-        "[data]: ('bar', 'three') is in RHS only",
-        "[data]: ('bar', 'two') is in LHS only",
-        "[data]: ('baz', 'four') is in RHS only",
-        "[names][1]: l2 != l3",
+        "('bar', 'three') is in RHS only",
+        "('bar', 'two') is in LHS only",
+        "('baz', 'four') is in RHS only",
     )
 
-    # MultiIndex vs. regular index
-    int_index = "Index" if PANDAS_GE_200 else "Int64Index"
+    # MultiIndex vs. regular index.
+    # This goes through a special case path where pd.Index.isin raises.
+    int_index = "Index<int64>" if PANDAS_GE_200 else "Int64Index"
     check(
         lhs,
         pd.Index([0, 1, 2]),
-        "Cannot compare objects: MultiIndex([('bar', 'one'), "
-        f"..., {int_index}([0, 1, 2], dtype='int64')",
+        "('bar', 'one') is in LHS only",
+        "('bar', 'two') is in LHS only",
+        "('baz', 'one') is in LHS only",
+        "0 is in RHS only",
+        "1 is in RHS only",
+        "2 is in RHS only",
         f"object type differs: MultiIndex != {int_index}",
     )
 

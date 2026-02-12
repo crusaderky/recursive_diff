@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Hashable
 from functools import singledispatch
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -72,9 +73,12 @@ def cast_nparray(
     Map to a DataArray with dimensions dim_0, dim_1, ... and
     RangeIndex() as the coords.
     """
-    data = _strip_dataarray(xarray.DataArray(obj), brief_dims)
-    out = {f"dim_{i}": pd.RangeIndex(size) for i, size in enumerate(obj.shape)}
-    out["data"] = data
+    out: dict[str, Any] = {
+        "__index_dict": True,
+        "data": _strip_dataarray(xarray.DataArray(obj), brief_dims),
+    }
+    for i, size in enumerate(obj.shape):
+        out[f"dim_{i}"] = pd.RangeIndex(size)
     return out
 
 
@@ -126,13 +130,11 @@ def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]) -> o
         return obj
 
     # Strip out the non-index coordinates and attributes
-    return {
+    out: dict[str, Any] = {
         "name": obj.name,
         "attrs": obj.attrs,
         # Index is handled separately, and created as a default
-        # RangeIndex(shape[i]) if it doesn't exist, as it is compared
-        # with outer join, whereas non-index coords and data are
-        # compared with inner joinu
+        # RangeIndex(shape[i]) if it doesn't exist
         "index": {k: obj.coords[k].to_index() for k in obj.dims},
         "coords": {
             k: _strip_dataarray(v, brief_dims)
@@ -141,6 +143,8 @@ def cast_dataarray(obj: xarray.DataArray, brief_dims: Collection[Hashable]) -> o
         },
         "data": _strip_dataarray(obj, brief_dims),
     }
+    out["index"]["__index_dict"] = True
+    return out
 
 
 @cast.register(xarray.Dataset)
@@ -152,7 +156,7 @@ def cast_dataset(
 
     Map to a dict of DataArrays.
     """
-    return {
+    out: dict[str, Any] = {
         "attrs": obj.attrs,
         # There may be coords, index or not, that are not
         # used in any data variable.
@@ -167,52 +171,8 @@ def cast_dataset(
             k: _strip_dataarray(v, brief_dims) for k, v in obj.data_vars.items()
         },
     }
-
-
-@cast.register(pd.MultiIndex)
-def cast_multiindex(
-    obj: pd.MultiIndex,
-    brief_dims: Collection[Hashable],  # noqa: ARG001
-) -> dict[str, object]:
-    """Single dispatch specialised variant of :func:`cast` for
-    :class:`pandas.MultiIndex`.
-
-    Map to a set of tuples. Note that this means that levels are
-    positional. Using a set allows comparing the indices non-positionally.
-    """
-    return {"names": obj.names, "data": set(obj.tolist())}
-
-
-@cast.register(pd.RangeIndex)
-def cast_rangeindex(
-    obj: pd.RangeIndex,
-    brief_dims: Collection[Hashable],  # noqa: ARG001
-) -> pd.RangeIndex:
-    """Single dispatch specialised variant of :func:`cast` for
-    :class:`pandas.RangeIndex`.
-
-    This function does nothing - RangeIndex objects are dealt with
-    directly by :func:`_recursive_diff`. This function is defined
-    to prevent RangeIndex objects to be processed by the more generic
-    ``cast(obj: pd.Index)`` below.
-    """
-    return obj
-
-
-@cast.register(pd.Index)
-def cast_index(obj: pd.Index, brief_dims: Collection[Hashable]) -> xarray.DataArray:
-    """Single dispatch specialised variant of :func:`cast` for
-    :class:`pandas.Index`.
-
-    Cast to a DataArray.
-
-    .. note::
-       :func:`~functools.singledispatch` always prefers a more specialised
-       variant if available, so this function will not be called for
-       :class:`pandas.MultiIndex` or :class:`pandas.RangeIndex`, as they have
-       their own single dispatch variants.
-    """
-    return _strip_dataarray(xarray.DataArray(obj), brief_dims)
+    out["index"]["__index_dict"] = True
+    return out
 
 
 @cast.register(frozenset)
