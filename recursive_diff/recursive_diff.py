@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Collection, Generator, Hashable
-from contextlib import suppress
 from typing import Any, Literal
 
 import numpy as np
@@ -120,8 +119,8 @@ def recursive_diff(
         abs_tol=abs_tol,
         brief_dims=brief_dims,
         path=[],
-        seen_lhs=[],
-        seen_rhs=[],
+        seen_lhs={},
+        seen_rhs={},
     ):
         if diffs or isinstance(diff, Delayed):
             diffs.append(diff)
@@ -158,17 +157,17 @@ def _recursive_diff(
     abs_tol: float,
     brief_dims: Collection[Hashable] | Literal["all"],
     path: list[object],
-    seen_lhs: list[int],
-    seen_rhs: list[int],
+    seen_lhs: dict[int, int],
+    seen_rhs: dict[int, int],
 ) -> Generator[str | Delayed]:  # yields str | Delayed[list[str]]
     """Recursive implementation of :func:`recursive_diff`
 
     :param list path:
         list of nodes traversed so far, to be prepended to all error messages
-    param list[int] seen_lhs:
-        list of id() of all lhs objects traversed so far, to detect cycles
-    param list[int] seen_rhs:
-        list of id() of all rhs objects traversed so far, to detect cycles
+    param dict[int, int] seen_lhs:
+        map of {id(): path index} of all lhs objects traversed so far, to detect cycles
+    param dict[int, int] seen_rhs:
+        map of {id(): path index} of all rhs objects traversed so far, to detect cycles
 
     This function calls itself recursively for all elements of numpy-based
     data, list, tuple, and dict.values(). Every time, it appends to the
@@ -186,12 +185,8 @@ def _recursive_diff(
         return path_prefix + msg
 
     # Detect recursion
-    recursive_lhs = -1
-    recursive_rhs = -1
-    with suppress(ValueError):
-        recursive_lhs = seen_lhs.index(id(lhs))
-    with suppress(ValueError):
-        recursive_rhs = seen_rhs.index(id(rhs))
+    recursive_lhs = seen_lhs.get(id(lhs), -1)
+    recursive_rhs = seen_rhs.get(id(rhs), -1)
 
     if recursive_lhs >= 0 or recursive_rhs >= 0:
         if recursive_lhs != recursive_rhs:
@@ -208,9 +203,9 @@ def _recursive_diff(
 
     # Don't add potentially internalized objects
     if not is_basic_noncontainer(lhs):
-        seen_lhs = [*seen_lhs, id(lhs)]
+        seen_lhs = {**seen_lhs, id(lhs): len(path)}
     if not is_basic_noncontainer(rhs):
-        seen_rhs = [*seen_rhs, id(rhs)]
+        seen_rhs = {**seen_rhs, id(rhs): len(path)}
     # End of recursion detection
 
     if isinstance(lhs, Delayed) or isinstance(rhs, Delayed):
@@ -227,8 +222,8 @@ def _recursive_diff(
             abs_tol=abs_tol,
             brief_dims=brief_dims,
             path=path,
-            seen_lhs=[],
-            seen_rhs=[],
+            seen_lhs={},
+            seen_rhs={},
         )
         return
 
@@ -458,8 +453,8 @@ def _diff_dataarrays(
             abs_tol=abs_tol,
             brief_dims=(),
             path=path,
-            seen_lhs=[],
-            seen_rhs=[],
+            seen_lhs={},
+            seen_rhs={},
         )
         return
 
