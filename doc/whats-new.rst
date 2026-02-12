@@ -6,7 +6,7 @@ What's New
 v2.0.0 (unreleased)
 -------------------
 
-This release completely overhauls the diff engine, for up to a 300x speed-up when
+This release completely overhauls the diff engine, for up to 40x speed-up when
 comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
 **YAML**, and **Zarr**.
 
