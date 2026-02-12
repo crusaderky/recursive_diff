@@ -122,12 +122,14 @@ def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
         pd.DataFrame([[1, 2], [3, 4]], index=["i1", "i2"], columns=["c1", "c2"]),
         xarray.DataArray([1, 2]),
         xarray.DataArray([1, 2], dims=["x"], coords={"x": [3, 4]}),
+        xarray.Dataset(data_vars={"v": ("x", [1, 2])}, coords={"x": [3, 4]}),
         Rectangle(1, 2),
         Circle(1),
     ],
 )
 def test_identical(x):
     assert not list(recursive_diff(x, deepcopy(x)))
+    assert not list(recursive_diff(x, deepcopy(x), brief_dims="all"))
 
 
 @requires_dask
@@ -136,6 +138,7 @@ def test_identical(x):
     [
         xarray.DataArray([1, 2]),
         xarray.DataArray([1, 2], dims=["x"], coords={"x": [3, 4]}),
+        xarray.Dataset(data_vars={"v": ("x", [1, 2])}, coords={"x": [3, 4]}),
     ],
 )
 def test_identical_dask(x):
@@ -161,6 +164,7 @@ def test_object_type_differs():
 def test_collections():
     check([1, 2], [1, 2, 3], "RHS has 1 more elements than LHS: [3]")
     check({1, 2}, {1, 2, (3, 4)}, "(3, 4) is in RHS only")
+    check({1, 2}, {1}, "2 is in LHS only")
     check(
         {"x": 10, "y": 20},
         {"x": 10, "y": 30},
@@ -197,7 +201,10 @@ def test_float():
         abs_tol=0,
     )
 
-    check(123, 123.0000000000001)  # difference is below rel_tol=1e-9
+    check(123, 123.0)  # int vs. float
+    check(123.0, 123)  # float vs. int
+    check(123, 123.01, abs_tol=0.1)  # difference below tolerance
+    check(123, 123.01, "123.0 != 123.01 (abs: 1.0e-02, rel: 8.1e-05)")
 
     check(
         123456.7890123456,
@@ -426,6 +433,26 @@ def test_numpy_scalar():
         "2000-01-01 != 2000-01-02",
     )
     check(np.datetime64("2000-01-01"), np.datetime64("NaT"), "2000-01-01 != NaT")
+
+
+def test_rtol_zerodivision_float():
+    """test rtol calculation of floats where one of the two elements is 0"""
+    check(
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        "[1]: 1.0 != 0.0 (abs: -1.0e+00, rel: -1.0e+00)",
+        "[2]: 0.0 != 1.0 (abs: 1.0e+00, rel: nan)",
+    )
+
+
+def test_rtol_zerodivision_numpy():
+    """test rtol calculation of numpy arrays where one of the two elements is 0"""
+    check(
+        np.array([0.0, 1.0, 0.0]),
+        np.array([0.0, 0.0, 1.0]),
+        "[data][1]: 1.0 != 0.0 (abs: -1.0e+00, rel: -1.0e+00)",
+        "[data][2]: 0.0 != 1.0 (abs: 1.0e+00, rel: nan)",
+    )
 
 
 def test_pandas_series():
@@ -958,7 +985,7 @@ def test_dask_dataarray_discards_data():
     """Test that chunked Dask datasets are loaded into memory and then
     discarded, without caching them in place with .load() or .persist()
     """
-    import dask.array as da  # noqa: PLC0415
+    import dask.array as da
 
     allow = True
 
@@ -978,7 +1005,7 @@ def test_dask_dataarray_discards_data():
 
 @requires_dask
 def test_dask_delayed():
-    from dask import delayed  # noqa: PLC0415
+    from dask import delayed
 
     a = delayed(lambda: [10, 20])()
     b = delayed(lambda: [10, 21])()
@@ -990,6 +1017,28 @@ def test_dask_delayed():
     check(a, d, "")
     check(a.compute(), d, "")
     check(a, d.compute(), "")
+
+
+def test_0d_arrays():
+    a = xarray.DataArray(1)
+    b = xarray.DataArray(2)
+    check(a, b, "[data]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)")
+
+
+@requires_dask
+def test_0d_arrays_dask():
+    # Note: DataArray.chunk() does not convert 0d arrays to Dask
+    import dask.array as da
+
+    a = xarray.DataArray(da.asarray(1), name="foo")
+    b = xarray.DataArray(da.asarray(2), name="foo")
+    check(a, b, "[data]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)")
+
+
+def test_empty_arrays():
+    a = xarray.DataArray(np.array([], dtype=np.int64))
+    b = xarray.DataArray(np.array([], dtype=np.int32))
+    check(a, b, "object type differs: DataArray<int64> != DataArray<int32>")
 
 
 def test_recursion():
@@ -1067,8 +1116,8 @@ def test_lazy_datasets_without_dask(tmp_path):
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
 @pytest.mark.parametrize("chunks", [None, "auto"])
 def test_lazy_datasets_huge(tmp_path, chunks):
-    import dask  # noqa: PLC0415
-    import dask.array as da  # noqa: PLC0415
+    import dask
+    import dask.array as da
 
     # 200 MiB, 8 MiB per variable
     a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(25)})

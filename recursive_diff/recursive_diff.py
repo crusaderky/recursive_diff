@@ -401,7 +401,7 @@ def _recursive_diff(
                 # f = float32, float64
                 # c = complex64, complex128
                 if is_dask_collection(lhs) or is_dask_collection(rhs):
-                    import dask.array as da  # noqa: PLC0415
+                    import dask.array as da
 
                     isclose = da.isclose
                 else:

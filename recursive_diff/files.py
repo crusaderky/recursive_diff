@@ -39,7 +39,7 @@ def _maybe_delayed(
 ) -> Callable[[str, bool], Any]:
     def wrapper(fname: str, as_delayed: bool) -> Any:
         if as_delayed:
-            import dask  # noqa: PLC0415
+            import dask
 
             return dask.delayed(func)(fname)
 
@@ -62,7 +62,7 @@ def _open_jsonl(fname: str) -> list:
 
 @_maybe_delayed
 def _open_yaml(fname: str) -> Any:
-    import yaml  # noqa: PLC0415
+    import yaml
 
     with builtins.open(fname) as f:
         return yaml.safe_load(f)
@@ -70,7 +70,7 @@ def _open_yaml(fname: str) -> Any:
 
 @_maybe_delayed
 def _open_msgpack(fname: str) -> Any:
-    import msgpack  # noqa: PLC0415
+    import msgpack
 
     with builtins.open(fname, "rb") as f:
         return msgpack.unpack(f)
