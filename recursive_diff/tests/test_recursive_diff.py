@@ -271,7 +271,7 @@ def test_identity():
     lhs[3] += "baz"
     # Referencing objects directly from lhs is pointless in CPython due to
     # internalization. This is just for the sake of being implementation agnostic.
-    rhs = [lhs[0], 123456, lhs[2], "bar"]  
+    rhs = [lhs[0], 123456, lhs[2], "bar"]
     rhs[1] += 1
     rhs[3] += "baz"
 
