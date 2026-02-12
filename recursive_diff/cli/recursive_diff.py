@@ -184,11 +184,12 @@ def main(
     if args.recursive:
         lhs = recursive_open(args.lhs, args.patterns, **kwargs)
         rhs = recursive_open(args.rhs, args.patterns, **kwargs)
+        logger.info("Comparing %d vs. %d files...", len(lhs), len(rhs))
     else:
         lhs = open_(args.lhs, **kwargs)
         rhs = open_(args.rhs, **kwargs)
+        logger.info("Comparing 2 files...")
 
-    logger.info("Comparing...")
     # In case of netCDF or Zarr:
     # 1. Load a pair of variables from lhs and rhs into RAM
     # 2. compare them
@@ -211,6 +212,9 @@ def main(
         print(diff)
 
     print(f"Found {diff_count} differences")
+    # Print log time once more to allow performance benchmarking
+    logger.info("Finished comparison")
+
     if diff_count:
         return 1
     return 0
