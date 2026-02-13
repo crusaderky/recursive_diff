@@ -1225,3 +1225,34 @@ def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
         check(b, c, "")
 
     mm.assert_peak(max_peak * 2**20)
+
+
+@requires_dask
+@pytest.mark.thread_unsafe(reason="process-wide dask config")
+def test_dask_scheduler():
+    """Test that recursive_diff respects the global dask scheduler config, e.g.
+    one can define a process-wide distributed.Client, and doesn't always
+    override it with the threaded scheduler.
+
+    This test also checks that all dask objects are computed at once.
+    """
+    import dask.config
+    import dask.delayed
+    import dask.threaded
+
+    seen = []
+
+    def get(dsk, keys, **kwargs):
+        seen.append((dsk, keys, kwargs))
+        return dask.threaded.get(dsk, keys, **kwargs)
+
+    a1 = xarray.DataArray([1, 2]).chunk()
+    a2 = xarray.DataArray([1, 2]).chunk()
+    b1 = xarray.DataArray([1, 3]).chunk()
+    b2 = xarray.DataArray([1, 3]).chunk()
+    c1 = dask.delayed(lambda: 1)()
+    c2 = dask.delayed(lambda: 1)()
+
+    with dask.config.set({"scheduler": get}):
+        check([a1, b1, c1], [a2, b2, c2])
+    assert len(seen) == 1
