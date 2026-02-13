@@ -1228,6 +1228,7 @@ def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
 
 
 @requires_dask
+@pytest.mark.thread_unsafe(reason="process-wide dask config")
 def test_dask_scheduler():
     """Test that recursive_diff respects the global dask scheduler config, e.g.
     one can define a process-wide distributed.Client, and doesn't always
