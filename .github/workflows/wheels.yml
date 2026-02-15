@@ -35,7 +35,7 @@ jobs:
           python-version: "3.14"
 
       - name: Install wheel
-        run: pip install recursive-diff -f dist/
+        run: pip install dist/*.whl
 
       - name: Smoke test
         working-directory: /tmp
@@ -50,7 +50,9 @@ jobs:
           ncdiff --help
 
       - name: Install optional dependencies
-        run: pip install 'recursive-diff[all]' -f dist/
+        run: |
+          FNAME=$(ls dist/*.whl)
+          pip install "${FNAME}[all]"
 
       - uses: actions/upload-artifact@v5
         with:
