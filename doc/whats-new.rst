@@ -10,6 +10,8 @@ This release completely overhauls the diff engine, for up to 40x speed-up when
 comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
 **YAML**, and **Zarr**.
 
+- Added optional pip dependency ``[all]`` to install all dependencies needed to
+  open files on Disk.
 - New functions :func:`open` and :func:`recursive_open` for opening files from the
   Python API, supporting JSON, JSONL, MessagePack, YAML, NetCDF and Zarr
   file formats.

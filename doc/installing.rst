@@ -36,9 +36,18 @@ Installing with conda
 Installing with pip
 -------------------
 
+For a minimal installation:
+
 .. code-block:: bash
 
     pip install recursive-diff
+
+You may also install all optional dependencies to enable
+support for all file formats and Dask:
+
+.. code-block:: bash
+
+    pip install recursive-diff[all]
 
 
 .. _mindeps_policy:

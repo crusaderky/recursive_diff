@@ -83,7 +83,7 @@ class Square:
 
 
 def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
-    expect = sorted(e for e in expect if e)
+    expect = sorted(expect)
     actual = sorted(
         recursive_diff(
             lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol, brief_dims=brief_dims
@@ -1082,7 +1082,7 @@ def test_dask_dataarray_discards_data():
 
     a = xarray.DataArray(da.Array({("a", 0): (f,)}, "a", chunks=[(2,)], dtype="int"))
     b = xarray.DataArray([1, 2], name=a.name)
-    check(a, b, "")
+    check(a, b)
 
     # Test that the graph is computed again
     allow = False
@@ -1101,9 +1101,9 @@ def test_dask_delayed():
 
     check(a, b, "[1]: 20 != 21 (abs: 1.0e+00, rel: 5.0e-02)")
     check(a, c, "object type differs: list != tuple")
-    check(a, d, "")
-    check(a.compute(), d, "")
-    check(a, d.compute(), "")
+    check(a, d)
+    check(a.compute(), d)
+    check(a, d.compute())
 
 
 def test_0d_arrays():
@@ -1222,7 +1222,7 @@ def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
 
     # Peak memory usage on Dask = thread count * thread heap size
     with dask.config.set({"num_workers": 1}), MemoryMonitor() as mm:
-        check(b, c, "")
+        check(b, c)
 
     mm.assert_peak(max_peak * 2**20)
 

@@ -49,6 +49,11 @@ jobs:
           recursive-diff --help
           ncdiff --help
 
+      - name: Install optional dependencies
+        run: |
+          FNAME=$(ls dist/*.whl)
+          pip install "${FNAME}[all]"
+
       - uses: actions/upload-artifact@v5
         with:
           name: dist
