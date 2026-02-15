@@ -18,19 +18,19 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
 - Dask-backed Xarray objects are now compared chunk by chunk instead of loading an
   entire pair of variables into memory at once.
 - Added support for Dask delayed objects.
-- When multiple Dask objects are compared, they are compared all at once using the
-  available Dask threads instead of one variable at a time. This should result in
-  speed-ups disk reads are pipelined with comparisons. However it can also result in
+- When comparing multiple Dask objects, use all available Dask threads to compare
+  multiple objects at once instead of one variable at a time. This should result in
+  speed-ups as disk reads are pipelined with comparisons. However, it can also cause
   higher memory usage depending on available CPUs and disk read speeds; you can control
   it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
-- Added fast-path when lhs and rhs share the same object reference.
+- Added fast-path when lhs and rhs share some objects
 - Added support for :class:`pandas.DataFrame` with different dtypes for different columns
 - :class:`pandas.Index` diffs are much faster and retain the original order, instead of
   being sorted alphabetically
 - :class:`pandas.Index` now compare dtypes
 - :class:`pandas.MultiIndex` no longer compare names
 - Added support for NumPy and Pandas datetime objects too large for ``M8[ns]``
-  (before year 1677 or after 2262)
+  (before year 1677 or after year 2262)
 - When comparing array data, use ``np.isclose(rhs, lhs)`` instead of
   ``np.isclose(lhs, rhs)``, as the function is not symmetric and the second parameter is
   the reference value. See :func:`numpy.isclose`. Comparison of floats continues using
@@ -56,7 +56,8 @@ CLI changes
        recursive-diff -r -m "foo*.nc" "bar*.nc" -- dir1 dir2  # valid (note the --)
        recursive-diff -r dir1 dir2 -m "foo*.nc"  # valid
 
-- The CLI tool no longer requires Dask to be installed.
+- The CLI tool no longer requires Dask to be installed. It remains recommended to reduce
+  memory usage and speed up the comparison.
 
 Breaking changes
 ^^^^^^^^^^^^^^^^

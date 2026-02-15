@@ -104,7 +104,7 @@ def open(
     Other file formats are loaded eagerly unless you pass the `chunks` parameter.
 
     JSONL files are loaded as pure-python lists, not with :func:`pandas.read_json` or
-    `dask.dataframe.read_json`. This allows better support for mismatched keys on
+    :func:`dask.dataframe.read_json`. This allows better support for mismatched keys on
     different lines.
 
     :param str | pathlib.Path fname:
@@ -113,7 +113,7 @@ def open(
         File format. Default: infer from file extension.
     :param chunks:
         Passed to :func:`xarray.open_dataset`. For files other than netCDF and Zarr, any
-        value other than None causes the function to return a dask delayed object.
+        value other than None causes the function to return a Dask delayed object.
     :param str netcdf_engine:
         netCDF engine (see :func:`xarray.open_dataset`). Ignored for other file formats.
         Default: use Xarray default depending on what is available.
@@ -121,11 +121,11 @@ def open(
         netCDF and Zarr files:
             :class:`xarray.Dataset`
         other files, chunks is not None:
-            :class:`dask.delayed.Delayed`
+            :class:`dask.delayed.Delayed` that computes to a pure-python object.
         other files, chunks=None:
             a pure-python object.
 
-        The output can be passed as either the ``lhs`` or ``rhs`` argument to
+        The output can be passed as either the ``lhs`` or ``rhs`` argument of
         :func:`~recursive_diff.recursive_diff` or :func:`~recursive_diff.recursive_eq`.
     """
     logger.info("Opening %s", fname)
@@ -177,16 +177,16 @@ def recursive_open(
         File format. Default: infer from file extension.
     :param chunks:
         Passed to :func:`xarray.open_dataset`. For files other than netCDF and Zarr, any
-        value other than None causes the function to return a dask delayed object.
+        value other than None causes the function to return a Dask delayed object.
     :param str netcdf_engine:
         netCDF engine (see :func:`xarray.open_dataset`). Ignored for other file formats.
         Default: use Xarray default depending on what is available.
     :returns:
         dict of {file name relative to *path*: file contents}, which can be passed as
-        either the ``lhs`` or ``rhs`` argument to :func:`~recursive_diff.recursive_diff`
+        either the ``lhs`` or ``rhs`` argument of :func:`~recursive_diff.recursive_diff`
         or :func:`~recursive_diff.recursive_eq`.
 
-    **Thread-safety note:** this function is not thread-safe on Python 3.10.
+    **Thread-safety note:** this function is not thread-safe on Python 3.9.
     """
     if isinstance(patterns, str):
         patterns = [patterns]

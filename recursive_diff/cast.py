@@ -35,20 +35,20 @@ def cast(obj: object) -> object:
 
     - Cast tuple to list
     - Cast frozenset to set
-    - Cast all numpy-based objects to :class:`xarray.DataArray`, as it is the
+    - Cast array-based objects to :class:`xarray.DataArray`, as it is the
       most generic format that can describe all use cases:
 
       - :class:`numpy.ndarray`
       - :class:`pandas.Series`
       - :class:`pandas.DataFrame`
-      - :class:`pandas.Index`, except :class:`pandas.RangeIndex`, which is
-        instead returned unaltered
       - :class:`xarray.Dataset`
 
     The data will be potentially wrapped by a dict to hold the various
     attributes and marked so that it doesn't trigger an infinite recursion.
 
-    - Do nothing for any other object types.
+    Do nothing for any other object types.
+
+    See :doc:`extend` for more details.
 
     :param obj:
         complex object that must be simplified
