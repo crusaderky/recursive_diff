@@ -12,8 +12,9 @@ Required dependencies
 Optional dependencies
 ---------------------
 
-recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__,
-as well as dask delayed objects.
+recursive-diff supports Xarray objects backed by `Dask <https://dask.org/>`__, as well
+as Dask delayed objects. It is recommended to use Dask to compare files with
+:func:`~recursive_diff.recursive_open` or the :doc:`cli`.
 
 Dependencies needed to open files:
 

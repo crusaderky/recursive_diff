@@ -70,7 +70,8 @@ def recursive_diff(
     - NaN equals to NaN
     - bools are only equal to other bools
     - numpy arrays are compared elementwise and with tolerance,
-      also testing the dtype
+      also testing the dtype, using :func:`numpy.isclose(rhs, lhs) <numpy.isclose>` for
+      numeric arrays and equality for other dtypes.
     - pandas and Xarray objects are compared elementwise, with tolerance, and
       without order. Duplicate indices are not supported.
     - Xarray dimensions and variables are compared without order
