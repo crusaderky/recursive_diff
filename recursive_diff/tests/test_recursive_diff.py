@@ -892,6 +892,13 @@ def test_brief_dims_nd(chunk):
         "[data][c=2]: 2 differences",
         brief_dims=["r"],
     )
+    check(
+        da1,
+        da2,
+        "[data][r=0]: 2 differences",
+        "[data][r=2]: 1 differences",
+        brief_dims=["c"],
+    )
     check(da1, da2, "[data]: 3 differences", brief_dims="all")
 
     check(da1, da1)

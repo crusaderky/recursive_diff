@@ -15,6 +15,7 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
 - New functions :func:`open` and :func:`recursive_open` for opening files from the
   Python API, supporting JSON, JSONL, MessagePack, YAML, NetCDF and Zarr
   file formats.
+- :func:`recursive_eq` now supports the ``brief_dims`` argument
 - Dask-backed Xarray objects are now compared chunk by chunk instead of loading an
   entire pair of variables into memory at once.
 - Added support for Dask delayed objects.
