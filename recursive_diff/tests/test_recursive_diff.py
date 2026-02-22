@@ -96,10 +96,18 @@ def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
     "x",
     [
         123,
+        123.0,
+        12 + 3j,
         "blah",
         "a\nb",
         math.nan,
         np.nan,
+        math.nan + 1j,
+        1 + math.nan * 1j,
+        math.inf,
+        np.inf,
+        math.inf + 1j,
+        1 + math.inf * 1j,
         True,
         False,
         [1, 2],
@@ -110,11 +118,28 @@ def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
         np.uint64(1),
         np.float32(1),
         np.float64(1),
+        np.complex64(1 + 2j),
+        np.complex128(1 + 2j),
         {1: 2, 3: 4},
         {1, 2},
         frozenset([1, 2]),
         np.arange(10),
         np.arange(10, dtype=np.float64),
+        np.array([1.2j]),
+        np.array([np.nan + 1j]),
+        pytest.param(
+            np.array([np.inf + 1j]),
+            marks=[pytest.mark.filterwarnings("ignore:Invalid value")]
+            if np.__version__ < "2"
+            else [],
+        ),
+        pytest.param(
+            np.array([np.nan + np.inf * 1j]),
+            marks=[pytest.mark.filterwarnings("ignore:Invalid value")]
+            if np.__version__ < "2"
+            else [],
+        ),
+        np.array([np.nan + np.nan * 1j]),
         pd.Series([1, 2]),
         pd.Series([1, 2], index=[3, 4]),
         pd.RangeIndex(10),
@@ -209,7 +234,7 @@ def test_float():
     check(123, 123.0)  # int vs. float
     check(123.0, 123)  # float vs. int
     check(123, 123.01, abs_tol=0.1)  # difference below tolerance
-    check(123, 123.01, "123.0 != 123.01 (abs: 1.0e-02, rel: 8.1e-05)")
+    check(123, 123.01, "123 != 123.01 (abs: 1.0e-02, rel: 8.1e-05)")
 
     check(
         123456.7890123456,
@@ -232,10 +257,6 @@ def test_float():
     # Abs tol is RHS - LHS; rel tol is RHS / LHS - 1
     check(80.0, 175.0, "80.0 != 175.0 (abs: 9.5e+01, rel: 1.2e+00)")
 
-    # Division by zero in relative delta
-    check(1.0, 0.0, "1.0 != 0.0 (abs: -1.0e+00, rel: -1.0e+00)")
-    check(0.0, 1.0, "0.0 != 1.0 (abs: 1.0e+00, rel: nan)")
-
     # tolerance settings are retained when descending into containers
     check(
         [{"x": (1.0, 2.0)}],
@@ -251,14 +272,89 @@ def test_float():
     check(2, 5, "2 != 5 (abs: 3.0e+00, rel: 1.5e+00)", abs_tol=2)
 
 
+def test_float_division_by_zero():
+    # Division by zero in relative delta
+    check(0.0, 0.1, "0.0 != 0.1 (abs: 1.0e-01, rel: nan)")
+    check(0.1, 0.0, "0.1 != 0.0 (abs: -1.0e-01, rel: -1.0e+00)")
+
+
+def test_complex_division_by_zero():
+    # Division by zero in relative delta
+    check(
+        0.1 + 0j,
+        0 + 0j,
+        "(0.1+0j) != 0j (abs: -1.0e-01+0.0e+00j, rel: -1.0e+00+0.0e+00j)",
+    )
+    check(0 + 0.1j, 0 + 0j, "0.1j != 0j (abs: 0.0e+00-1.0e-01j, rel: 0.0e+00-1.0e+00j)")
+    check(0 + 0j, 0.1 + 0j, "0j != (0.1+0j) (abs: 1.0e-01+0.0e+00j, rel: nan)")
+    check(0 + 0j, 0 + 0.1j, "0j != 0.1j (abs: 0.0e+00+1.0e-01j, rel: nan)")
+
+
 def test_int_vs_float():
     """ints are silently cast to float and do not cause an
     'object type differs' error.
     """
     check(123, 123.0)
     check(123, 123.0000000000001)  # difference is below rel_tol=1e-9
-    check(1, 1.01, "1.0 != 1.01 (abs: 1.0e-02, rel: 1.0e-02)", abs_tol=0.001)
+    check(1, 1.01, "1 != 1.01 (abs: 1.0e-02, rel: 1.0e-02)", abs_tol=0.001)
     check(1, 1.01, abs_tol=0.1)
+
+
+def test_int_vs_complex():
+    """ints are NOT silently cast to complex"""
+    msg = "object type differs: int != complex"
+    check(123, 123.0 + 0j, msg)
+    check(123, 123.0000000000001 + 0j, msg)  # difference is below rel_tol=1e-9
+    check(
+        1,
+        1.01 + 0j,
+        msg,
+        "1 != (1.01+0j) (abs: 1.0e-02+0.0e+00j, rel: 1.0e-02+0.0e+00j)",
+        abs_tol=0.001,
+    )
+    check(1, 1.01 + 0j, msg, abs_tol=0.1)
+
+
+def test_float_vs_complex():
+    """floats are NOT silently cast to complex"""
+    msg = "object type differs: float != complex"
+    check(123.0, 123.0 + 0j, msg)
+    check(123.0, 123.0000000000001 + 0j, msg)  # difference is below rel_tol=1e-9
+    check(
+        1.0,
+        1.01 + 0j,
+        msg,
+        "1.0 != (1.01+0j) (abs: 1.0e-02+0.0e+00j, rel: 1.0e-02+0.0e+00j)",
+        abs_tol=0.001,
+    )
+    check(1.0, 1.01 + 0j, msg, abs_tol=0.1)
+
+
+def test_complex_nan():
+    check(
+        math.nan + 1j,
+        math.nan + 1.01j,
+        "(nan+1j) != (nan+1.01j) (abs: nan+1.0e-02j, rel: nan+1.0e-02j)",
+    )
+    check(
+        math.nan + 1j,
+        math.nan + 1.01j,
+        abs_tol=0.1,
+    )
+
+
+def test_complex_infinities():
+    check(
+        math.inf + 1j,
+        math.inf + 1.01j,
+        "(inf+1j) != (inf+1.01j) (abs: 0.0e+00+1.0e-02j, rel: 0.0e+00+1.0e-02j)",
+    )
+    check(math.inf + 1j, math.inf + 1.01j, abs_tol=0.1)
+    check(
+        math.inf + 1j,
+        -math.inf + 1.01j,
+        "(inf+1j) != (-inf+1.01j) (abs: -inf+1.0e-02j, rel: nan+1.0e-02j)",
+    )
 
 
 def test_identity():
@@ -285,8 +381,12 @@ def test_numpy_types():
     """
     check(123, np.int32(123))
     check(np.int64(123), np.int32(123))
+    check(123, np.float32(123))
     check(123, np.float64(123))
     check(np.float32(123), np.float64(123))
+    check(1 + 2j, np.complex64(1 + 2j))
+    check(1 + 2j, np.complex128(1 + 2j))
+    check(np.complex64(1 + 2j), np.complex128(1 + 2j))
     check(
         np.float64(1),
         np.float64(1.01),
@@ -476,7 +576,7 @@ def test_numpy_scalar():
     check(
         np.array(1, dtype=np.int64),
         np.array(2.5),
-        "[data]: 1.0 != 2.5 (abs: 1.5e+00, rel: 1.5e+00)",
+        "[data]: 1 != 2.5 (abs: 1.5e+00, rel: 1.5e+00)",
         "object type differs: ndarray<int64> != ndarray<float64>",
     )
     check(
@@ -1028,7 +1128,7 @@ def test_custom_classes():
     check(
         Rectangle(1, 2),
         Rectangle(1.1, 2.7),
-        "[h]: 2.0 != 2.7 (abs: 7.0e-01, rel: 3.5e-01)",
+        "[h]: 2 != 2.7 (abs: 7.0e-01, rel: 3.5e-01)",
         abs_tol=0.5,
     )
 

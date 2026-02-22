@@ -25,6 +25,7 @@ comparing array data, and adds support for **JSON**, **JSONL**, **MessagePack**,
   higher memory usage depending on available CPUs and disk read speeds; you can control
   it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
 - Added fast-path when lhs and rhs share some objects
+- Added support for complex numbers
 - Added support for :class:`pandas.DataFrame` with different dtypes for different columns
 - :class:`pandas.Index` diffs are much faster and retain the original order, instead of
   being sorted alphabetically

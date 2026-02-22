@@ -37,7 +37,7 @@ def is_array_like(dtype: str) -> bool:
 
 
 def is_basic_noncontainer(x: object) -> bool:
-    return type(x) in {bool, int, float, type(None), str, bytes}
+    return type(x) in {bool, int, float, complex, type(None), str, bytes}
 
 
 def recursive_diff(
@@ -51,7 +51,7 @@ def recursive_diff(
     """Compare two objects and yield all differences.
     The two objects must any of:
 
-    - basic types (str, int, float, bool)
+    - basic types (int, float, complex, bool, str, bytes)
     - basic collections (list, tuple, dict, set, frozenset)
     - numpy scalar types
     - :class:`numpy.ndarray`
@@ -67,11 +67,13 @@ def recursive_diff(
     Special treatment is reserved to different types:
 
     - floats and ints are compared with tolerance, using :func:`math.isclose`
+    - complex numbers are compared with tolerance, using :func:`math.isclose`
+      separately on the real and imaginary parts
     - NaN equals to NaN
     - bools are only equal to other bools
     - numpy arrays are compared elementwise and with tolerance,
-      also testing the dtype, using :func:`numpy.isclose(rhs, lhs) <numpy.isclose>` for
-      numeric arrays and equality for other dtypes.
+      also testing the dtype, using :func:`numpy.isclose(lhs, rhs) <numpy.isclose>`
+      for numeric arrays and equality for other dtypes.
     - pandas and Xarray objects are compared elementwise, with tolerance, and
       without order. Duplicate indices are not supported.
     - Xarray dimensions and variables are compared without order
@@ -240,13 +242,9 @@ def _recursive_diff(
 
     # 1.0 vs. 1 must not be treated as a difference
     if isinstance(lhs, int) and isinstance(rhs, float):
-        # Cast lhs to float
         dtype_lhs = "float"
-        lhs = float(lhs)
     elif isinstance(rhs, int) and isinstance(lhs, float):
-        # Cast rhs to float
         dtype_rhs = "float"
-        rhs = float(rhs)
 
     # When comparing an array vs. a plain python list or scalar, log an error
     # for the different dtype and then proceed to compare the contents
@@ -371,15 +369,46 @@ def _recursive_diff(
     elif are_instances(lhs, rhs, bytes):
         if lhs != rhs:
             yield diff(f"{lhs_repr} != {rhs_repr}")
+    elif are_instances(lhs, rhs, (int, float)):
+        if (
+            lhs != rhs  # Fast path
+            and not math.isclose(lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol)
+            and not (math.isnan(lhs) and math.isnan(rhs))
+        ):
+            abs_delta = rhs - lhs
+            rel_delta = math.nan if lhs == 0 else rhs / lhs - 1
+            yield diff(f"{lhs} != {rhs} (abs: {abs_delta:.1e}, rel: {rel_delta:.1e})")
     elif are_instances(lhs, rhs, (int, float, complex)):
-        if math.isnan(lhs) and math.isnan(rhs):
-            pass
-        elif not math.isclose(lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol):
+        if (
+            lhs != rhs  # Fast path
+            and (
+                (
+                    not math.isclose(
+                        lhs.real, rhs.real, rel_tol=rel_tol, abs_tol=abs_tol
+                    )
+                    and not (math.isnan(lhs.real) and math.isnan(rhs.real))
+                )
+                or (
+                    not math.isclose(
+                        lhs.imag, rhs.imag, rel_tol=rel_tol, abs_tol=abs_tol
+                    )
+                    and not (math.isnan(lhs.imag) and math.isnan(rhs.imag))
+                )
+            )
+        ):
+            # Print tweak for inf vs. inf
+            abs_delta = complex(
+                rhs.real - lhs.real if rhs.real != lhs.real else 0,
+                rhs.imag - lhs.imag if rhs.imag != lhs.imag else 0,
+            )
             try:
-                rel_delta = rhs / lhs - 1
+                rel_delta = complex(
+                    rhs.real / lhs.real - 1 if rhs.real != lhs.real else 0,
+                    rhs.imag / lhs.imag - 1 if rhs.imag != lhs.imag else 0,
+                )
             except ZeroDivisionError:
                 rel_delta = math.nan
-            yield diff(f"{lhs} != {rhs} (abs: {rhs - lhs:.1e}, rel: {rel_delta:.1e})")
+            yield diff(f"{lhs} != {rhs} (abs: {abs_delta:.1e}, rel: {rel_delta:.1e})")
 
     elif are_instances(lhs, rhs, xarray.DataArray):
         yield from _diff_dataarrays(
@@ -734,6 +763,8 @@ def _dtype_str(obj: object) -> str:
         dtype = "int"
     elif isinstance(obj, np.floating):
         dtype = "float"
+    elif isinstance(obj, np.complexfloating):
+        dtype = "complex"
 
     if isinstance(obj, (pd.MultiIndex, pd.RangeIndex)):
         np_dtype = None
