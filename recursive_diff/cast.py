@@ -35,6 +35,7 @@ def cast(obj: object) -> object:
 
     - Cast tuple to list
     - Cast frozenset to set
+    - Cast NumPy generics to pure-Python objects
     - Cast array-based objects to :class:`xarray.DataArray`, as it is the
       most generic format that can describe all use cases:
 
@@ -94,6 +95,14 @@ def cast_npfloat(obj: np.floating) -> float:
     floats (not to be confused with numpy arrays of floats)
     """
     return float(obj)
+
+
+@cast.register(np.complexfloating)
+def cast_npcomplex(obj: np.complexfloating) -> complex:
+    """Single dispatch specialised variant of :func:`cast` for all numpy scalar
+    complex numbers (not to be confused with numpy arrays of complex numbers)
+    """
+    return complex(obj)
 
 
 @cast.register(np.ndarray)
