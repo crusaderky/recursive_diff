@@ -480,10 +480,7 @@ def _diff_dataarrays(
     # For Dask-backed arrays, this operation is delayed.
     if lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
         # Both arrays are numeric
-        # np.isclose is not symmetric; the second element is the reference value.
-        # In recursive-diff, lhs is typically the reference value,
-        # so we're swapping them below.
-        mask = ~isclose(rhs.data, lhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
+        mask = ~isclose(lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
     elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
         # Both arrays are datetime64
         # Unlike with np.isclose(equal_nan=True), there is no
