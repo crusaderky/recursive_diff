@@ -3,7 +3,7 @@
 What's New
 ==========
 
-v2.0.0 (unreleased)
+v2.0.0 (2026-02-22)
 -------------------
 
 This release completely overhauls the diff engine, for up to 40x speed-up when comparing
@@ -11,27 +11,28 @@ array data, and 2.4x when comparing JSON-like data, and adds support for reading
 **JSON**, **JSONL**, **MessagePack**, **YAML**, and **Zarr** files from disk.
 
 - Added optional pip dependency ``[all]`` to install all dependencies needed to
-  open files on Disk.
+  open files on disk
 - New functions :func:`open` and :func:`recursive_open` for opening files from the
   Python API, supporting JSON, JSONL, MessagePack, YAML, NetCDF and Zarr
   file formats.
 - :func:`recursive_eq` now supports the ``brief_dims`` argument
 - Dask-backed Xarray objects are now compared chunk by chunk instead of loading an
-  entire pair of variables into memory at once.
-- Added support for Dask delayed objects.
+  entire pair of variables into memory at once
+- Added support for Dask delayed objects
 - When comparing multiple Dask objects, use all available Dask threads to compare
   multiple objects at once instead of one variable at a time. This should result in
   speed-ups as disk reads are pipelined with comparisons. However, it can also cause
   higher memory usage depending on available CPUs and disk read speeds; you can control
   it with ``dask.config.set({"num_workers": 2})`` or a similarly low number.
-- Added fast-path when lhs and rhs share some objects
+- Added fast path for when lhs and rhs share some objects
+- Added fast path for identical builtin non-container objects
 - Added support for complex numbers
 - Added support for :class:`pandas.DataFrame` with different dtypes for different columns
-- :class:`pandas.Index` diffs are much faster and retain the original order, instead of
-  being sorted alphabetically
+- :class:`pandas.Index` diffs are now much faster and retain the original order, instead
+  of being sorted alphabetically
 - :class:`pandas.Index` now compare dtypes
 - :class:`pandas.MultiIndex` no longer compare names
-- Added support for NumPy and Pandas datetime objects too large for ``M8[ns]``
+- Added support for datetime objects too large for ``M8[ns]``
   (before year 1677 or after year 2262)
 
 - Dropped support for pynio, cfgrib, and pseudonetcdf netCDF engines
