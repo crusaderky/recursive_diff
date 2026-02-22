@@ -37,7 +37,12 @@ def is_array_like(dtype: str) -> bool:
 
 
 def is_basic_noncontainer(x: object) -> bool:
+    # Beware: np.float64 is a subclass of float;
+    # np.complex128 is a subclass of complex.
     return type(x) in {bool, int, float, complex, type(None), str, bytes}
+
+
+DO_NOT_CAST_TYPES = {bool, int, float, complex, str, bytes, list, dict, set, type(None)}
 
 
 def recursive_diff(
@@ -70,6 +75,9 @@ def recursive_diff(
     - complex numbers are compared with tolerance, using :func:`math.isclose`
       separately on the real and imaginary parts
     - NaN equals to NaN
+    - floats without decimals compare as equal to ints
+    - complex numbers without imaginary part DO NOT compare as equal to floats,
+      as they have substantially different behaviour
     - bools are only equal to other bools
     - numpy arrays are compared elementwise and with tolerance,
       also testing the dtype, using :func:`numpy.isclose(lhs, rhs) <numpy.isclose>`
@@ -177,7 +185,19 @@ def _recursive_diff(
     path list one element.
     """
 
+    # Fast path
     if lhs is rhs:
+        return
+
+    lhs_is_basic_noncontainer = is_basic_noncontainer(lhs)
+    rhs_is_basic_noncontainer = is_basic_noncontainer(rhs)
+    if (
+        lhs_is_basic_noncontainer
+        and rhs_is_basic_noncontainer
+        and lhs == rhs
+        # Do not compare complex vs. float and int vs. bool as equal
+        and type(lhs) is type(rhs)
+    ):
         return
 
     def diff(msg: str, print_path: list[object] = path) -> str:
@@ -205,9 +225,9 @@ def _recursive_diff(
         return
 
     # Don't add potentially internalized objects
-    if not is_basic_noncontainer(lhs):
+    if not lhs_is_basic_noncontainer:
         seen_lhs = {**seen_lhs, id(lhs): len(path)}
-    if not is_basic_noncontainer(rhs):
+    if not rhs_is_basic_noncontainer:
         seen_rhs = {**seen_rhs, id(rhs): len(path)}
     # End of recursion detection
 
@@ -237,8 +257,11 @@ def _recursive_diff(
     # cast lhs and rhs to simpler data types; pretty-print data type
     dtype_lhs = _dtype_str(lhs)
     dtype_rhs = _dtype_str(rhs)
-    lhs = cast(lhs)
-    rhs = cast(rhs)
+    # fast path: Skip single dispatch for basic types
+    if type(lhs) not in DO_NOT_CAST_TYPES:
+        lhs = cast(lhs)
+    if type(rhs) not in DO_NOT_CAST_TYPES:
+        rhs = cast(rhs)
 
     # 1.0 vs. 1 must not be treated as a difference
     if isinstance(lhs, int) and isinstance(rhs, float):
