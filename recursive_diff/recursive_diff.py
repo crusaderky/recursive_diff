@@ -540,12 +540,11 @@ def _diff_dataarrays(
 
     diffs_idx = []
     for axis, size in enumerate(mask.shape):
-        if axis not in brief_axes:
-            idx = arange(size)
-            idx = idx.reshape(*[1] * axis, -1, *[1] * (mask.ndim - axis - 1))
-            idx = broadcast_to(idx, mask.shape)
-            idx = idx[mask]
-            diffs_idx.append(idx)
+        idx = arange(size)
+        idx = idx.reshape(*[1] * axis, -1, *[1] * (mask.ndim - axis - 1))
+        idx = broadcast_to(idx, mask.shape)
+        idx = idx[mask]
+        diffs_idx.append(idx)
 
     msg_prefix = "".join(f"[{elem}]" for elem in path)
 
