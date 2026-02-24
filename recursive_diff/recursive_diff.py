@@ -521,9 +521,7 @@ def _diff_dataarrays(
         if lhs.chunks is None:
             # Fix for old versions of Dask, where
             # np.ndarray == da.Array returned a np.ndarray
-            lhs = lhs.chunk(
-                {dim: chunks for dim, chunks in zip(rhs.dims, rhs.chunks)}
-            )
+            lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
 
         is_dask = True
         isclose = da.isclose
