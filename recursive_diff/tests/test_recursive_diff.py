@@ -1312,8 +1312,8 @@ def test_lazy_datasets_without_dask(tmp_path):
 @pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 80)])
 @pytest.mark.parametrize("format", ["netcdf", "zarr"])
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
-    import dask
     import dask.array as da
+    import dask.config
 
     # 320 MiB, 8 MiB per variable
     a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(40)})
@@ -1363,3 +1363,36 @@ def test_dask_scheduler():
     with dask.config.set({"scheduler": get}):
         check([a1, b1, c1], [a2, b2, c2])
     assert len(seen) == 1
+
+
+@requires_dask
+@pytest.mark.slow
+@pytest.mark.thread_unsafe(reason="process-wide dask config")
+def test_distributed_index_bloom():
+    """Test against an issue where broadcasting the indices
+    vs. the mask on dask.distributed can cause the worker memory
+    to bloom.
+    """
+    distributed = pytest.importorskip("distributed")
+    import dask.array as da
+    import dask.config
+
+    a = xarray.DataArray(
+        # 781 MiB, 24 MiB per chunk
+        da.random.random((40,) * 5, chunks=(20,) * 5)
+    )
+    # Identical array but with different Dask keys
+    b = xarray.where(a < 0, 1, a)
+
+    with dask.config.set(
+        {
+            "array.rechunk.method": "tasks",  # Prevent warning and crash
+            "distributed.worker.memory.spill": False,
+            "distributed.worker.memory.pause": False,
+        }
+    ), distributed.Client(
+        n_workers=2,
+        threads_per_worker=2,
+        memory_limit="1 GiB",
+    ):
+        check(a, b)

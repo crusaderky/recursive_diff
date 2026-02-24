@@ -159,8 +159,12 @@ numpy = "*"
 pandas = "*"
 xarray = "*"
 
+[tool.pixi.feature.dask-core.dependencies]
+dask-core = "*"
+
 [tool.pixi.feature.dask.dependencies]
 dask-core = "*"
+distributed = "*"
 
 [tool.pixi.feature.files.dependencies]
 msgpack-python = "*"
@@ -310,6 +314,6 @@ py311 = { features = ["py311", "dask", "files", "smoke", "tests"] }
 py314 = { features = ["py314", "dask", "files", "smoke", "tests"] }
 no-dask = { features = ["py314", "files", "smoke", "tests"] }
 no-optional = { features = ["py314", "smoke", "tests"] }
-nogil = { features = ["nogil", "dask", "smoke", "tests"] }
+nogil = { features = ["nogil", "dask-core", "smoke", "tests"] }
 upstream = { features = ["upstream", "smoke", "tests"], no-default-feature = true }
 smoke = { features = ["smoke"] }
