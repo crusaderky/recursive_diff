@@ -16,7 +16,7 @@ import pandas as pd
 import xarray
 
 from recursive_diff.cast import MissingKeys, cast
-from recursive_diff.dask_compat import Delayed, is_dask_collection
+from recursive_diff.dask_compat import Delayed
 
 PANDAS_GE_200 = int(pd.__version__.split(".")[0]) >= 2
 
@@ -515,8 +515,13 @@ def _diff_dataarrays(
     # Change the order as needed.
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
-    if is_dask_collection(lhs) or is_dask_collection(rhs):
+    if lhs.chunks is not None or rhs.chunks is not None:
         import dask.array as da
+
+        if lhs.chunks is None:
+            # Fix for old versions of Dask, where
+            # np.ndarray == da.Array returned a np.ndarray
+            lhs = lhs.chunk(rhs.chunks)
 
         is_dask = True
         isclose = da.isclose
@@ -760,7 +765,7 @@ def _array0d_to_scalar(x: xarray.DataArray) -> Any:
     or a dask delayed that returns the item.
     """
     assert not x.dims
-    if is_dask_collection(x):
+    if x.chunks is not None:
         from dask import delayed
 
         return delayed(lambda x_np: x_np.item())(x.data)
