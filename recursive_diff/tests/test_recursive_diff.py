@@ -1379,6 +1379,8 @@ def test_distributed_index_bloom():
 
     a = xarray.DataArray(
         # 781 MiB, 24 MiB per chunk
+        # The issue of broadcasting the indices vs. the mask and accidentally
+        # deep-copying afterwards grows with the number of dimensions.
         da.random.random((40,) * 5, chunks=(20,) * 5)
     )
     # Identical array but with different Dask keys
