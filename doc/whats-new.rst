@@ -5,6 +5,8 @@ What's New
 
 v2.1.0 (unreleased)
 -------------------
+- Fixed issue that would cause excessive RAM usage when comparing Dask arrays with
+  2+ dimensions using a distributed scheduler
 
 
 v2.0.0 (2026-02-22)

@@ -16,7 +16,7 @@ import pandas as pd
 import xarray
 
 from recursive_diff.cast import MissingKeys, cast
-from recursive_diff.dask_compat import Delayed, is_dask_collection
+from recursive_diff.dask_compat import Delayed
 
 PANDAS_GE_200 = int(pd.__version__.split(".")[0]) >= 2
 
@@ -515,18 +515,19 @@ def _diff_dataarrays(
     # Change the order as needed.
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
-    if is_dask_collection(lhs) or is_dask_collection(rhs):
+    if lhs.chunks is not None or rhs.chunks is not None:
         import dask.array as da
+
+        if lhs.chunks is None:
+            # Fix for old versions of Dask, where
+            # np.ndarray == da.Array returned a np.ndarray
+            lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
 
         is_dask = True
         isclose = da.isclose
-        arange = da.arange
-        broadcast_to = da.broadcast_to
     else:
         is_dask = False
         isclose = np.isclose
-        arange = np.arange  # type: ignore[assignment]
-        broadcast_to = np.broadcast_to  # type: ignore[assignment]
 
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
@@ -589,9 +590,19 @@ def _diff_dataarrays(
 
     diffs_idx = []
     for axis, size in enumerate(mask.shape):
-        idx = arange(size)
-        idx = idx.reshape(*[1] * axis, -1, *[1] * (mask.ndim - axis - 1))
-        idx = broadcast_to(idx, mask.shape)
+        idx_shape = (1,) * axis + (-1,) + (1,) * (mask.ndim - axis - 1)
+        if is_dask:
+            import dask.array as da
+
+            assert isinstance(mask, da.Array)
+            idx = da.arange(size, chunks=mask.chunks[axis])
+            idx = idx.reshape(idx_shape)
+            idx = da.broadcast_to(idx, mask.shape, chunks=mask.chunks)
+        else:
+            idx = np.arange(size)
+            idx = idx.reshape(idx_shape)
+            idx = np.broadcast_to(idx, mask.shape)
+
         idx = idx[mask]
         diffs_idx.append(idx)
 
@@ -754,7 +765,7 @@ def _array0d_to_scalar(x: xarray.DataArray) -> Any:
     or a dask delayed that returns the item.
     """
     assert not x.dims
-    if is_dask_collection(x):
+    if x.chunks is not None:
         from dask import delayed
 
         return delayed(lambda x_np: x_np.item())(x.data)
