@@ -1390,11 +1390,11 @@ def test_distributed_index_bloom():
         {
             "array.rechunk.method": "tasks",  # Prevent warning and crash
             "distributed.worker.memory.spill": False,
-            "distributed.worker.memory.pause": False,
         }
     ), distributed.Client(
         n_workers=2,
         threads_per_worker=2,
-        memory_limit="1.5 GiB",
+        # Note: MacOS requires a lot more RAM than Linux for some reason
+        memory_limit="1.6 GiB",
     ):
         check(a, b)
