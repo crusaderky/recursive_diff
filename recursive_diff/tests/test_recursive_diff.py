@@ -1426,15 +1426,15 @@ def test_p2p_rechunk():
 def test_as_dataframes(chunk):
     # MultiIndex; numeric
     a = xarray.DataArray(
-        [[1, 2], [3, 4]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="a"
+        [[1.0, 2.0], [3.0, 4.0]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="a"
     )
     b = xarray.DataArray(
-        [[1, 2], [3, 5]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="b"
+        [[1.0, 2.0], [3.0, 5.0]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="b"
     )
 
     # Only metadata differs
-    c = xarray.DataArray([1, 2], name="c")
-    d = xarray.DataArray([1, 2], name="d")
+    c = xarray.DataArray([1.0, 2.0], name="c")
+    d = xarray.DataArray([1.0, 2.0], name="d")
 
     # Single index; not numeric
     e = xarray.DataArray(["foo", "bar"], name="e")
@@ -1464,9 +1464,9 @@ def test_as_dataframes(chunk):
         actual[0][1],
         pd.DataFrame(
             {
-                "lhs": [4],
-                "rhs": [5],
-                "abs_delta": [1],
+                "lhs": [4.0],
+                "rhs": [5.0],
+                "abs_delta": [1.0],
                 "rel_delta": [0.25],
                 "x": ["b"],
                 "y": [1],
@@ -1477,8 +1477,7 @@ def test_as_dataframes(chunk):
     pd.testing.assert_frame_equal(
         actual[4][1],
         pd.DataFrame(
-            {"lhs": ["bar"], "rhs": ["baz"]},
-            index=pd.Index([1], name="dim_0")
+            {"lhs": ["bar"], "rhs": ["baz"]}, index=pd.Index([1], name="dim_0")
         ),
     )
 
@@ -1488,18 +1487,22 @@ def test_as_dataframes_0d(chunk):
     if chunk:
         import dask.array as da
 
-        a = xarray.DataArray(da.asarray(1), name="n")
-        b = xarray.DataArray(da.asarray(2), name="n")
+        a = xarray.DataArray(da.asarray(1.0), name="n")
+        b = xarray.DataArray(da.asarray(2.0), name="n")
     else:
-        a = xarray.DataArray(1)
-        b = xarray.DataArray(2)
+        a = xarray.DataArray(1.0)
+        b = xarray.DataArray(2.0)
 
-    check(a, b, "[data]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)", as_dataframes=True)
+    check(a, b, "[data]: 1.0 != 2.0 (abs: 1.0e+00, rel: 1.0e+00)", as_dataframes=True)
 
 
 def test_as_dataframes_brief_dims(chunk):
-    a = xarray.DataArray([[1, 2], [3, 4]], dims=["x", "y"], coords={"x": ["a", "b"]})
-    b = xarray.DataArray([[1, 2], [3, 5]], dims=["x", "y"], coords={"x": ["a", "b"]})
+    a = xarray.DataArray(
+        [[1.0, 2.0], [3.0, 4.0]], dims=["x", "y"], coords={"x": ["a", "b"]}
+    )
+    b = xarray.DataArray(
+        [[1.0, 2.0], [3.0, 5.0]], dims=["x", "y"], coords={"x": ["a", "b"]}
+    )
     if chunk:
         a = a.chunk()
         b = b.chunk()
@@ -1526,8 +1529,8 @@ def test_as_dataframes_name_collision(chunk):
     columns are handled gracefully.
     """
 
-    a = xarray.DataArray([1, 2], dims=["lhs"], coords={"lhs": ["a", "b"]})
-    b = xarray.DataArray([1, 3], dims=["lhs"], coords={"lhs": ["a", "b"]})
+    a = xarray.DataArray([1.0, 2.0], dims=["lhs"], coords={"lhs": ["a", "b"]})
+    b = xarray.DataArray([1.0, 3.0], dims=["lhs"], coords={"lhs": ["a", "b"]})
 
     if chunk:
         a = a.chunk()
@@ -1540,11 +1543,71 @@ def test_as_dataframes_name_collision(chunk):
         actual[0][1],
         pd.DataFrame(
             {
-                "lhs": [2],
-                "rhs": [3],
-                "abs_delta": [1],
+                "lhs": [2.0],
+                "rhs": [3.0],
+                "abs_delta": [1.0],
                 "rel_delta": [0.5],
             },
             index=pd.Index(["b"], name="lhs"),
         ),
     )
+
+
+def test_as_dataframes_preserves_int_dtype(chunk):
+    a = xarray.DataArray(
+        np.asarray([1, 2], dtype=np.int8),
+        dims=["x"],
+        coords={"x": np.asarray([10, 20], dtype=np.int32)},
+    )
+    b = xarray.DataArray(
+        np.asarray([1, 3], dtype=np.int16),
+        dims=["x"],
+        coords={"x": np.asarray([10, 20], dtype=np.int32)},
+    )
+    if chunk:
+        a = a.chunk()
+        b = b.chunk()
+
+    actual = list(recursive_diff(a, b, as_dataframes=True))
+    assert len(actual) == 2
+    assert actual[0] == "object type differs: DataArray<int8> != DataArray<int16>"
+    assert actual[1][0] == "[data]"
+
+    pd.testing.assert_frame_equal(
+        actual[1][1],
+        pd.DataFrame(
+            {
+                "lhs": np.asarray([2], dtype=np.int8),
+                "rhs": np.asarray([3], dtype=np.int16),
+                # automatic promotion between int8 and int16
+                "abs_delta": np.asarray([1], dtype=np.int16),
+                "rel_delta": np.asarray([0.5], dtype=np.float64),
+            },
+            index=pd.Index(np.asarray([20], dtype=np.int32), name="x"),
+        ),
+    )
+
+
+def test_as_dataframes_index_mismatch(chunk):
+    a = xarray.DataArray([1.0, 2.0, 3.0], dims=["x"], coords={"x": ["a", "b", "c"]})
+    b = xarray.DataArray([1.0, 3.0], dims=["x"], coords={"x": ["a", "b"]})
+    if chunk:
+        a = a.chunk()
+        b = b.chunk()
+
+    actual = list(recursive_diff(a, b, as_dataframes=True))
+    assert len(actual) == 2
+    assert actual[0][0] == "[data]"
+    pd.testing.assert_frame_equal(
+        actual[0][1],
+        pd.DataFrame(
+            {
+                "lhs": [2.0],
+                "rhs": [3.0],
+                "abs_delta": [1.0],
+                "rel_delta": [0.5],
+            },
+            index=pd.Index(["b"], name="x"),
+        ),
+    )
+    assert actual[1] == "[index][x]: c is in LHS only"

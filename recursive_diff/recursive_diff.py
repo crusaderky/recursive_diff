@@ -146,7 +146,8 @@ def recursive_diff(
         one difference per line.
         If True, differences in array objects will produce tuples of (array path,
         pd.DataFrame) which are easier to visualize e.g. in Jupyter Notebook or to print
-        out to CSV.
+        out to CSV. Differences in metadata and indices are still going to be printed as
+        separate strings.
 
     Yields strings containing difference messages, prepended by the path to
     the point that differs.
