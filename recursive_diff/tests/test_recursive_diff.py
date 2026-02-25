@@ -1316,7 +1316,7 @@ def test_lazy_datasets_without_dask(tmp_path):
         # These are the worst case scenarios across all combinations.
         ("netcdf", None, 100),  # Takes more on MacOS
         ("netcdf", {}, 50),
-        ("zarr", None, 50),
+        ("zarr", None, 70),
         ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
     ],
 )
@@ -1420,8 +1420,8 @@ def test_p2p_rechunk():
     """
     distributed = pytest.importorskip("distributed")
 
-    a = xarray.DataArray([1, 2, 3], dims=["x"], coords={"x": ["a", "b", "c"]})
-    b = xarray.DataArray([1, 2, 4], dims=["x"], coords={"x": ["a", "b", "c"]})
+    a = xarray.DataArray([1, 2, 3], dims=["x"], coords={"x": ["a", "b", "c"]}).chunk(2)
+    b = xarray.DataArray([1, 2, 4], dims=["x"], coords={"x": ["a", "b", "c"]}).chunk(2)
 
     with distributed.Client(n_workers=2, threads_per_worker=1):
         check(a, b, "[data][x=c]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")

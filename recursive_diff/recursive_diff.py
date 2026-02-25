@@ -135,10 +135,13 @@ def recursive_diff(
         seen_lhs={},
         seen_rhs={},
     ):
-        if diffs or isinstance(diff, (Array, Delayed)):
-            diffs.append([diff] if isinstance(diff, str) else diff)
+        if isinstance(diff, str):
+            if diffs:
+                diffs.append([diff])
+            else:
+                yield diff
         else:
-            yield diff
+            diffs.append(diff)
 
     if not diffs:
         return
@@ -476,7 +479,7 @@ def _diff_dataarrays(
     abs_tol: float,
     brief_dims: Collection[Hashable] | Literal["all"],
     path: list[object],
-) -> Generator[str | Delayed | Array]:  # str | Delayed[list[str]]
+) -> Generator[str | Array | Delayed]:  # str | Array[str] | Delayed[list[str]]
     """
     Compare two DataArrays, previously prepared by _strip_dataarray.
 
@@ -513,14 +516,11 @@ def _diff_dataarrays(
     # Change the order as needed.
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
-    if lhs.chunks is not None or rhs.chunks is not None:
-        is_dask = True
-        if lhs.chunks is None:
-            lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
-        elif rhs.chunks is None:
-            rhs = rhs.chunk(dict(zip(lhs.dims, lhs.chunks)))
-    else:
-        is_dask = False
+    is_dask = lhs.chunks is not None or rhs.chunks is not None
+    if is_dask and lhs.chunks is None:
+        lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
+    elif is_dask and rhs.chunks is None:
+        rhs = rhs.chunk(dict(zip(lhs.dims, lhs.chunks)))  # type: ignore[arg-type]
 
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
@@ -612,13 +612,16 @@ def _diff_dataarrays(
     for labels, idxidx in zip(full_indices.values(), diffs_idx):
         if isinstance(labels, pd.RangeIndex) and labels.start == 0 and labels.step == 1:
             diffs_coord = idxidx
-        else:
-            labels = np.asarray(labels)  # Not the same as labels.values for strings
-            if is_dask:
-                import dask.array as da
+        elif is_dask:
+            import dask.array as da
 
-                labels = da.asarray(labels, chunks=-1)
+            labels = np.asarray(labels.values)  # Convert strings
+            labels = da.asarray(labels, chunks=-1)
             diffs_coord = labels[idxidx]
+        else:
+            # First filter, then deep-copy
+            diffs_coord = np.asarray(labels[idxidx].values)
+
         diffs_coords.append(diffs_coord)
 
     args: tuple
@@ -626,7 +629,7 @@ def _diff_dataarrays(
         pp_func = _diff_dataarrays_print_brief
         args = (diffs_count, *diffs_coords)  # type: ignore[possibly-undefined]
     elif lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
-        pp_func = _diff_dataarrays_print_full_tol  # type: ignore[assignment]
+        pp_func = _diff_dataarrays_print_full_delta  # type: ignore[assignment]
         abs_delta = diffs_rhs - diffs_lhs  # type: ignore[possibly-undefined]
         if is_dask:
             import dask.array as da
@@ -665,8 +668,8 @@ def _generator_to_array(func: Callable[..., Generator[str]], *args: Any) -> np.n
     This is used when the generator is the output of Dask's map_blocks, which
     requires a NumPy array output.
     """
-    gen = func(*args)
-    return np.array(list(gen), dtype="T" if NUMPY_GE_200 else object)
+    out = list(func(*args))
+    return np.array(out, dtype="T" if NUMPY_GE_200 else object)
 
 
 def _diff_dataarrays_print_full(
@@ -724,7 +727,7 @@ def _rel_delta(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
     return np.where(lhs == rhs, 0, np.where(lhs == 0, np.nan, diffs_rel))
 
 
-def _diff_dataarrays_print_full_tol(
+def _diff_dataarrays_print_full_delta(
     lhs: np.ndarray,
     rhs: np.ndarray,
     abs_delta: np.ndarray,
