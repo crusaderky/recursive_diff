@@ -1404,3 +1404,18 @@ def test_distributed_index_bloom():
         memory_limit="1 GiB",
     ):
         check(a, b)
+
+
+@requires_dask
+@pytest.mark.thread_unsafe(reason="spawns processes")
+def test_p2p_rechunk():
+    """Test support for p2p rechunk, which is the default when using
+    dask.distributed.
+    """
+    distributed = pytest.importorskip("distributed")
+
+    a = xarray.DataArray([1, 2, 3], dims=["x"], coords={"x": ["a", "b", "c"]})
+    b = xarray.DataArray([1, 2, 4], dims=["x"], coords={"x": ["a", "b", "c"]})
+
+    with distributed.Client(n_workers=2, threads_per_worker=1):
+        check(a, b, "[data][x=c]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")
