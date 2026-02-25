@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import math
 import re
+import typing
 from collections.abc import Callable, Collection, Generator, Hashable
 from functools import partial
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -47,6 +48,7 @@ def is_basic_noncontainer(x: object) -> bool:
 DO_NOT_CAST_TYPES = {bool, int, float, complex, str, bytes, list, dict, set, type(None)}
 
 
+@overload
 def recursive_diff(
     lhs: Any,
     rhs: Any,
@@ -54,7 +56,31 @@ def recursive_diff(
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
     brief_dims: Collection[Hashable] | Literal["all"] = (),
-) -> Generator[str]:
+    as_dataframes: Literal[False] = False,
+) -> Generator[str]: ...
+
+
+@overload
+def recursive_diff(
+    lhs: Any,
+    rhs: Any,
+    *,
+    rel_tol: float = 1e-09,
+    abs_tol: float = 0.0,
+    brief_dims: Collection[Hashable] | Literal["all"] = (),
+    as_dataframes: Literal[True],
+) -> Generator[str | tuple[str, pd.DataFrame]]: ...
+
+
+def recursive_diff(
+    lhs: Any,
+    rhs: Any,
+    *,
+    rel_tol: float = 1e-09,
+    abs_tol: float = 0.0,
+    brief_dims: Collection[Hashable] | Literal["all"] = (),
+    as_dataframes: bool = False,
+) -> Generator[str | tuple[str, pd.DataFrame]]:
     """Compare two objects and yield all differences.
     The two objects must any of:
 
@@ -115,6 +141,13 @@ def recursive_diff(
 
         Omit to output a line for every single different cell.
 
+    :param bool as_dataframes:
+        If False (default), differences in array objects will produce strings,
+        one difference per line.
+        If True, differences in array objects will produce tuples of (array path,
+        pd.DataFrame) which are easier to visualize e.g. in Jupyter Notebook or to print
+        out to CSV.
+
     Yields strings containing difference messages, prepended by the path to
     the point that differs.
     """
@@ -124,22 +157,29 @@ def recursive_diff(
     # found, without waiting for the whole recursion to finish. Once we encounter a
     # Delayed or dask-backed xarray object, we start accumulating all eager messages and
     # Delayed[list[str]] in a list and compute all the delayeds at once.
-    diffs: list[list[str] | Array | Delayed] = []
+    diffs: list[Any] = []
     for diff in _recursive_diff(
         lhs,
         rhs,
         rel_tol=rel_tol,
         abs_tol=abs_tol,
         brief_dims=brief_dims,
+        as_dataframes=as_dataframes,
         path=[],
         seen_lhs={},
         seen_rhs={},
     ):
-        if isinstance(diff, str):
-            if diffs:
-                diffs.append([diff])
-            else:
-                yield diff
+        if not diffs and isinstance(diff, str):
+            yield diff
+        elif (
+            as_dataframes
+            and not diffs
+            and isinstance(diff, tuple)
+            and all(isinstance(v, np.ndarray) for v in diff[2])
+        ):
+            path, constructor, args = diff
+            if args[0].size:
+                yield path, constructor(*args)
         else:
             diffs.append(diff)
 
@@ -155,10 +195,16 @@ def recursive_diff(
     # comparison contends for the GIL. Eventually this problem will go away once
     # free-threading becomes the norm.
     scheduler = dask.config.get("scheduler", "threads")
-    computed_diff: str | list[str]
     (computed_diffs,) = dask.compute(diffs, scheduler=scheduler)
     for computed_diff in computed_diffs:
-        yield from computed_diff
+        if isinstance(computed_diff, str):
+            yield computed_diff
+        elif isinstance(computed_diff, tuple):
+            path, constructor, args = computed_diff
+            if args[0].size:
+                yield path, constructor(*args)
+        else:
+            yield from computed_diff
 
 
 def _recursive_diff(
@@ -168,10 +214,16 @@ def _recursive_diff(
     rel_tol: float,
     abs_tol: float,
     brief_dims: Collection[Hashable] | Literal["all"],
+    as_dataframes: bool = False,
     path: list[object],
     seen_lhs: dict[int, int],
     seen_rhs: dict[int, int],
-) -> Generator[str | Array | Delayed]:  # yields str | Array[str] | Delayed[list[str]]
+) -> Generator[
+    str
+    | Array  # Array[str]
+    | Delayed  # Delayed[list[str]]
+    | tuple[str, Callable[..., pd.DataFrame], tuple[np.ndarray | Array, ...]]
+]:
     """Recursive implementation of :func:`recursive_diff`
 
     :param list path:
@@ -245,6 +297,7 @@ def _recursive_diff(
             rel_tol=rel_tol,
             abs_tol=abs_tol,
             brief_dims=brief_dims,
+            as_dataframes=as_dataframes,
             path=path,
             seen_lhs={},
             seen_rhs={},
@@ -305,6 +358,7 @@ def _recursive_diff(
                 rel_tol=rel_tol,
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
+                as_dataframes=as_dataframes,
                 path=[*path, i],
                 seen_lhs=seen_lhs,
                 seen_rhs=seen_rhs,
@@ -379,6 +433,7 @@ def _recursive_diff(
                 rel_tol=rel_tol,
                 abs_tol=abs_tol,
                 brief_dims=brief_dims,
+                as_dataframes=as_dataframes,
                 path=[*path, key],
                 seen_lhs=seen_lhs,
                 seen_rhs=seen_rhs,
@@ -441,6 +496,7 @@ def _recursive_diff(
             rel_tol=rel_tol,
             abs_tol=abs_tol,
             brief_dims=brief_dims,
+            as_dataframes=as_dataframes,
             path=path,
         )
 
@@ -478,8 +534,15 @@ def _diff_dataarrays(
     rel_tol: float,
     abs_tol: float,
     brief_dims: Collection[Hashable] | Literal["all"],
+    as_dataframes: bool,
     path: list[object],
-) -> Generator[str | Array | Delayed]:  # str | Array[str] | Delayed[list[str]]
+) -> Generator[
+    str
+    | Array  # Array[str]
+    | Delayed  # Delayed[list[str]]
+    # (path, constructor, DataFrame columns)
+    | tuple[str, Callable[..., pd.DataFrame], tuple[np.ndarray | Array, ...]]
+]:
     """
     Compare two DataArrays, previously prepared by _strip_dataarray.
 
@@ -506,6 +569,7 @@ def _diff_dataarrays(
             rel_tol=rel_tol,
             abs_tol=abs_tol,
             brief_dims=(),
+            as_dataframes=False,
             path=path,
             seen_lhs={},
             seen_rhs={},
@@ -561,7 +625,7 @@ def _diff_dataarrays(
     del brief_dims
 
     full_indices = {
-        dim: lhs.coords[dim].to_index()
+        str(dim): lhs.coords[dim].to_index()
         for axis, dim in enumerate(lhs.dims)
         if axis not in brief_axes
     }
@@ -628,6 +692,7 @@ def _diff_dataarrays(
     if brief_axes:
         pp_func = _diff_dataarrays_print_brief
         args = (diffs_count, *diffs_coords)  # type: ignore[possibly-undefined]
+        build_df = partial(_build_dataframe, ["diffs_count"], list(full_indices))
     elif lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
         pp_func = _diff_dataarrays_print_full_delta  # type: ignore[assignment]
         abs_delta = diffs_rhs - diffs_lhs  # type: ignore[possibly-undefined]
@@ -638,9 +703,21 @@ def _diff_dataarrays(
         else:
             rel_delta = _rel_delta(diffs_lhs, diffs_rhs)
         args = (diffs_lhs, diffs_rhs, abs_delta, rel_delta, *diffs_coords)
+        build_df = partial(
+            _build_dataframe,
+            ["lhs", "rhs", "abs_delta", "rel_delta"],
+            list(full_indices),
+        )
     else:
         pp_func = _diff_dataarrays_print_full  # type: ignore[assignment]
         args = (diffs_lhs, diffs_rhs, *diffs_coords)  # type: ignore[possibly-undefined]
+        build_df = partial(_build_dataframe, ["lhs", "rhs"], list(full_indices))
+
+    if as_dataframes and full_indices:
+        # Note: xarray doesn't support NaN size; can't build a Dataset
+        # from the dask arrays here
+        yield msg_prefix, typing.cast("Callable[..., pd.DataFrame]", build_df), args
+        return
 
     dim_tags = tuple(
         # Prettier output when there was no coord at the beginning,
@@ -661,6 +738,19 @@ def _diff_dataarrays(
         )
     else:
         yield from pp_func(*args)
+
+
+def _build_dataframe(
+    column_names: list[str], index_names: list[str], *args: np.ndarray
+) -> pd.DataFrame:
+    columns = args[: len(column_names)]
+    indices = args[len(column_names) :]
+    # Prevent collisions between dims and diff names
+    d = {f"__column{i}": col for i, col in enumerate(columns)}
+    d.update(dict(zip(index_names, indices)))
+    df = pd.DataFrame(d).set_index(index_names)
+    df.columns = column_names
+    return df
 
 
 def _generator_to_array(func: Callable[..., Generator[str]], *args: Any) -> np.ndarray:

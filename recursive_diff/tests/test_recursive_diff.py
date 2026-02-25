@@ -83,13 +83,9 @@ class Square:
         return f"Square({self.side})"
 
 
-def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
+def check(lhs, rhs, *expect, **kwargs):
     expect = sorted(expect)
-    actual = sorted(
-        recursive_diff(
-            lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol, brief_dims=brief_dims
-        )
-    )
+    actual = sorted(recursive_diff(lhs, rhs, **kwargs))
     assert actual == expect
 
 
@@ -1425,3 +1421,130 @@ def test_p2p_rechunk():
 
     with distributed.Client(n_workers=2, threads_per_worker=1):
         check(a, b, "[data][x=c]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")
+
+
+def test_as_dataframes(chunk):
+    # MultiIndex; numeric
+    a = xarray.DataArray(
+        [[1, 2], [3, 4]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="a"
+    )
+    b = xarray.DataArray(
+        [[1, 2], [3, 5]], dims=["x", "y"], coords={"x": ["a", "b"]}, name="b"
+    )
+
+    # Only metadata differs
+    c = xarray.DataArray([1, 2], name="c")
+    d = xarray.DataArray([1, 2], name="d")
+
+    # Single index; not numeric
+    e = xarray.DataArray(["foo", "bar"], name="e")
+    f = xarray.DataArray(["foo", "baz"], name="f")
+
+    if chunk:
+        a = a.chunk()
+        b = b.chunk()
+        c = c.chunk()
+        d = d.chunk()
+        e = e.chunk()
+        f = f.chunk()
+
+    lhs = [a, 1, c, e]
+    rhs = [b, 2, d, f]
+
+    actual = list(recursive_diff(lhs, rhs, as_dataframes=True))
+    assert len(actual) == 6
+    assert actual[0][0] == "[0][data]"
+    assert actual[1] == "[0][name]: a != b"
+    assert actual[2] == "[1]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)"
+    assert actual[3] == "[2][name]: c != d"
+    assert actual[4][0] == "[3][data]"
+    assert actual[5] == "[3][name]: e != f"
+
+    pd.testing.assert_frame_equal(
+        actual[0][1],
+        pd.DataFrame(
+            {
+                "lhs": [4],
+                "rhs": [5],
+                "abs_delta": [1],
+                "rel_delta": [0.25],
+                "x": ["b"],
+                "y": [1],
+            }
+        ).set_index(["x", "y"]),
+    )
+
+    pd.testing.assert_frame_equal(
+        actual[4][1],
+        pd.DataFrame(
+            {"lhs": ["bar"], "rhs": ["baz"]},
+            index=pd.Index([1], name="dim_0")
+        ),
+    )
+
+
+def test_as_dataframes_0d(chunk):
+    """0d arrays ignore as_dataframes parameter"""
+    if chunk:
+        import dask.array as da
+
+        a = xarray.DataArray(da.asarray(1), name="n")
+        b = xarray.DataArray(da.asarray(2), name="n")
+    else:
+        a = xarray.DataArray(1)
+        b = xarray.DataArray(2)
+
+    check(a, b, "[data]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)", as_dataframes=True)
+
+
+def test_as_dataframes_brief_dims(chunk):
+    a = xarray.DataArray([[1, 2], [3, 4]], dims=["x", "y"], coords={"x": ["a", "b"]})
+    b = xarray.DataArray([[1, 2], [3, 5]], dims=["x", "y"], coords={"x": ["a", "b"]})
+    if chunk:
+        a = a.chunk()
+        b = b.chunk()
+
+    actual = list(recursive_diff(a, b, as_dataframes=True, brief_dims=["x"]))
+    pd.testing.assert_frame_equal(
+        actual[0][1],
+        pd.DataFrame({"diffs_count": [1], "y": [1]}).set_index(["y"]),
+    )
+
+    actual = list(recursive_diff(a, b, as_dataframes=True, brief_dims=["y"]))
+    pd.testing.assert_frame_equal(
+        actual[0][1],
+        pd.DataFrame({"diffs_count": [1], "x": ["b"]}).set_index(["x"]),
+    )
+
+    # When all dims are brief, ignore as_dataframes
+    check(a, b, "[data]: 1 differences", as_dataframes=True, brief_dims=["x", "y", "z"])
+    check(a, b, "[data]: 1 differences", as_dataframes=True, brief_dims="all")
+
+
+def test_as_dataframes_name_collision(chunk):
+    """Test that name collisions between the input dims and the generated dataframe
+    columns are handled gracefully.
+    """
+
+    a = xarray.DataArray([1, 2], dims=["lhs"], coords={"lhs": ["a", "b"]})
+    b = xarray.DataArray([1, 3], dims=["lhs"], coords={"lhs": ["a", "b"]})
+
+    if chunk:
+        a = a.chunk()
+        b = b.chunk()
+
+    actual = list(recursive_diff(a, b, as_dataframes=True))
+    assert actual[0][0] == "[data]"
+
+    pd.testing.assert_frame_equal(
+        actual[0][1],
+        pd.DataFrame(
+            {
+                "lhs": [2],
+                "rhs": [3],
+                "abs_delta": [1],
+                "rel_delta": [0.5],
+            },
+            index=pd.Index(["b"], name="lhs"),
+        ),
+    )
