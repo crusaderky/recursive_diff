@@ -1310,10 +1310,14 @@ def test_lazy_datasets_without_dask(tmp_path):
 @pytest.mark.slow
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
 @pytest.mark.parametrize(
-    "chunks,max_peak",
-    [pytest.param(None, 50, id="no dask"), pytest.param({}, 50, id="dask")],
+    "format,chunks,max_peak",
+    [
+        ("netcdf", None, 50),
+        ("netcdf", {}, 50),
+        ("zarr", None, 50),
+        ("zarr", {}, 8),
+    ],
 )
-@pytest.mark.parametrize("format", ["netcdf", "zarr"])
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
     import dask.array as da
     import dask.config
