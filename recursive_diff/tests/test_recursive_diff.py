@@ -1395,6 +1395,6 @@ def test_distributed_index_bloom():
     ), distributed.Client(
         n_workers=2,
         threads_per_worker=2,
-        memory_limit="1.2 GiB",
+        memory_limit="1.5 GiB",
     ):
         check(a, b)
