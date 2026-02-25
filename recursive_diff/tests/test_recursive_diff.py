@@ -1368,9 +1368,7 @@ def test_dask_scheduler():
 
 @requires_dask
 @pytest.mark.slow
-@pytest.mark.skipif(
-    sys.platform == "darwin", reason="Very slow and high memory usage"
-)
+@pytest.mark.skipif(sys.platform == "darwin", reason="Very slow and high memory usage")
 @pytest.mark.thread_unsafe(reason="process-wide dask config")
 def test_distributed_index_bloom():
     """Test against an issue where broadcasting the indices
