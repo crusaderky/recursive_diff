@@ -1,4 +1,5 @@
 import math
+import sys
 from copy import deepcopy
 
 import numpy as np
@@ -1367,6 +1368,9 @@ def test_dask_scheduler():
 
 @requires_dask
 @pytest.mark.slow
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="Very slow and high memory usage"
+)
 @pytest.mark.thread_unsafe(reason="process-wide dask config")
 def test_distributed_index_bloom():
     """Test against an issue where broadcasting the indices
@@ -1394,7 +1398,6 @@ def test_distributed_index_bloom():
     ), distributed.Client(
         n_workers=2,
         threads_per_worker=2,
-        # Note: MacOS requires a lot more RAM than Linux for some reason
-        memory_limit="1.6 GiB",
+        memory_limit="1 GiB",
     ):
         check(a, b)
