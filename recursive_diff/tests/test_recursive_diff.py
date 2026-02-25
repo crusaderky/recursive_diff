@@ -173,8 +173,7 @@ def test_identical(x):
     ],
 )
 def test_identical_dask(x):
-    x = x.chunk()
-    assert not list(recursive_diff(x, deepcopy(x)))
+    check(x.chunk(), deepcopy(x).chunk())
 
 
 def test_simple():
@@ -1310,14 +1309,25 @@ def test_lazy_datasets_without_dask(tmp_path):
 @requires_zarr
 @pytest.mark.slow
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
-@pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 80)])
-@pytest.mark.parametrize("format", ["netcdf", "zarr"])
+@pytest.mark.parametrize(
+    "format,chunks,max_peak",
+    [
+        # Different OSes and dependency versions have different peak RAM usages.
+        # These are the worst case scenarios across all combinations.
+        ("netcdf", None, 100),  # Takes more on MacOS
+        ("netcdf", {}, 50),
+        ("zarr", None, 70),
+        ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
+    ],
+)
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
     import dask.array as da
     import dask.config
 
-    # 320 MiB, 8 MiB per variable
-    a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(40)})
+    # 320 MiB, 8 MiB per variable, 2 MiB per chunk, indices are pd.RangeIndex
+    a = xarray.Dataset(
+        {f"v{i}": ("x", da.random.random(1_000_000, chunks=250_000)) for i in range(40)}
+    )
     if format == "netcdf":
         a.to_netcdf(tmp_path / "a.nc")
         b = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
@@ -1390,7 +1400,8 @@ def test_distributed_index_bloom():
 
     with dask.config.set(
         {
-            "array.rechunk.method": "tasks",  # Prevent warning and crash
+            # P2P rechunk is slower and takes more memory!
+            "array.rechunk.method": "tasks",
             "distributed.worker.memory.spill": False,
         }
     ), distributed.Client(
@@ -1399,3 +1410,18 @@ def test_distributed_index_bloom():
         memory_limit="1 GiB",
     ):
         check(a, b)
+
+
+@requires_dask
+@pytest.mark.thread_unsafe(reason="spawns processes")
+def test_p2p_rechunk():
+    """Test support for p2p rechunk, which is the default when using
+    dask.distributed.
+    """
+    distributed = pytest.importorskip("distributed")
+
+    a = xarray.DataArray([1, 2, 3], dims=["x"], coords={"x": ["a", "b", "c"]}).chunk(2)
+    b = xarray.DataArray([1, 2, 4], dims=["x"], coords={"x": ["a", "b", "c"]}).chunk(2)
+
+    with distributed.Client(n_workers=2, threads_per_worker=1):
+        check(a, b, "[data][x=c]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")

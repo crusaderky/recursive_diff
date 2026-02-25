@@ -7,6 +7,7 @@ v2.1.0 (unreleased)
 -------------------
 - Fixed issue that would cause excessive RAM usage when comparing Dask arrays with
   2+ dimensions using a distributed scheduler
+- Added support for P2P rechunk in distributed Dask
 
 
 v2.0.0 (2026-02-22)

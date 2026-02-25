@@ -39,7 +39,6 @@ class MemoryMonitor:
             spot = self._proc.memory_info().rss
             self.peak = max(self.peak, spot)
             self._stop_event.wait(0.01)
-            gc.collect()
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore[no-untyped-def]
         self._stop_event.set()
@@ -53,13 +52,16 @@ class MemoryMonitor:
     def assert_peak(self, max_delta: int) -> None:
         """Assert that the increase in memory usage from start to peak is less than
         max_delta bytes."""
-        assert self.delta < max_delta, str(self)
+        if self.delta > max_delta:
+            raise AssertionError(  # pragma: no cover
+                f"{self}: Exceeded {max_delta / 2**20:.1f} MiB memory usage"
+            )
 
-    def __repr__(self) -> str:  # pragma: no cover
-        def fmt(b: int) -> str:
+    def __repr__(self) -> str:
+        def fmt(b: int) -> str:  # pragma: no cover
             return f"{b / 2**20:.1f} MiB"
 
-        return (
+        return (  # pragma: no cover
             f"MemoryMonitor(start={fmt(self.start)}, "
             f"peak={fmt(self.peak)}, delta={fmt(self.delta)})"
         )
