@@ -1312,10 +1312,12 @@ def test_lazy_datasets_without_dask(tmp_path):
 @pytest.mark.parametrize(
     "format,chunks,max_peak",
     [
-        ("netcdf", None, 50),
+        # Different OSes and dependency versions have different peak RAM usages.
+        # These are the worst case scenarios across all combinations.
+        ("netcdf", None, 100),  # Takes more on MacOS
         ("netcdf", {}, 50),
         ("zarr", None, 50),
-        ("zarr", {}, 8),
+        ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
     ],
 )
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
