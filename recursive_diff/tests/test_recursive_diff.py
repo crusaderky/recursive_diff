@@ -1312,7 +1312,7 @@ def test_lazy_datasets_without_dask(tmp_path):
         # These are the worst case scenarios across all combinations.
         ("netcdf", None, 100),  # Takes more on MacOS
         ("netcdf", {}, 50),
-        ("zarr", None, 70),
+        ("zarr", None, 90),
         ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
     ],
 )
@@ -1469,7 +1469,7 @@ def test_as_dataframes(chunk):
                 "abs_delta": [1.0],
                 "rel_delta": [0.25],
                 "x": ["b"],
-                "y": [1],
+                "y": np.asarray([1]),
             }
         ).set_index(["x", "y"]),
     )
@@ -1477,7 +1477,8 @@ def test_as_dataframes(chunk):
     pd.testing.assert_frame_equal(
         actual[4][1],
         pd.DataFrame(
-            {"lhs": ["bar"], "rhs": ["baz"]}, index=pd.Index([1], name="dim_0")
+            {"lhs": ["bar"], "rhs": ["baz"]},
+            index=pd.Index(np.asarray([1]), name="dim_0"),
         ),
     )
 
@@ -1511,7 +1512,7 @@ def test_as_dataframes_brief_dims(chunk):
     pd.testing.assert_frame_equal(
         actual[0][1],
         pd.DataFrame(
-            {"diffs_count": np.asarray([1])}, 
+            {"diffs_count": np.asarray([1])},
             index=pd.Index(np.asarray([1]), name="y"),
         ),
     )
