@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Collection, Generator, Hashable
+from collections.abc import Callable, Collection, Generator, Hashable
+from functools import partial
 from typing import Any, Literal
 
 import numpy as np
@@ -16,8 +17,9 @@ import pandas as pd
 import xarray
 
 from recursive_diff.cast import MissingKeys, cast
-from recursive_diff.dask_compat import Delayed
+from recursive_diff.dask_compat import Array, Delayed
 
+NUMPY_GE_200 = int(np.__version__.split(".")[0]) >= 2
 PANDAS_GE_200 = int(pd.__version__.split(".")[0]) >= 2
 
 
@@ -122,7 +124,7 @@ def recursive_diff(
     # found, without waiting for the whole recursion to finish. Once we encounter a
     # Delayed or dask-backed xarray object, we start accumulating all eager messages and
     # Delayed[list[str]] in a list and compute all the delayeds at once.
-    diffs: list[str | Delayed] = []
+    diffs: list[list[str] | Array | Delayed] = []
     for diff in _recursive_diff(
         lhs,
         rhs,
@@ -133,8 +135,8 @@ def recursive_diff(
         seen_lhs={},
         seen_rhs={},
     ):
-        if diffs or isinstance(diff, Delayed):
-            diffs.append(diff)
+        if diffs or isinstance(diff, (Array, Delayed)):
+            diffs.append([diff] if isinstance(diff, str) else diff)
         else:
             yield diff
 
@@ -153,11 +155,7 @@ def recursive_diff(
     computed_diff: str | list[str]
     (computed_diffs,) = dask.compute(diffs, scheduler=scheduler)
     for computed_diff in computed_diffs:
-        if isinstance(computed_diff, list):
-            # From a Delayed
-            yield from computed_diff
-        else:
-            yield computed_diff
+        yield from computed_diff
 
 
 def _recursive_diff(
@@ -170,7 +168,7 @@ def _recursive_diff(
     path: list[object],
     seen_lhs: dict[int, int],
     seen_rhs: dict[int, int],
-) -> Generator[str | Delayed]:  # yields str | Delayed[list[str]]
+) -> Generator[str | Array | Delayed]:  # yields str | Array[str] | Delayed[list[str]]
     """Recursive implementation of :func:`recursive_diff`
 
     :param list path:
@@ -478,7 +476,7 @@ def _diff_dataarrays(
     abs_tol: float,
     brief_dims: Collection[Hashable] | Literal["all"],
     path: list[object],
-) -> Generator[str | Delayed]:  # str | Delayed[list[str]]
+) -> Generator[str | Delayed | Array]:  # str | Delayed[list[str]]
     """
     Compare two DataArrays, previously prepared by _strip_dataarray.
 
@@ -516,23 +514,25 @@ def _diff_dataarrays(
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
     if lhs.chunks is not None or rhs.chunks is not None:
-        import dask.array as da
-
-        if lhs.chunks is None:
-            # Fix for old versions of Dask, where
-            # np.ndarray == da.Array returned a np.ndarray
-            lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
-
         is_dask = True
-        isclose = da.isclose
+        if lhs.chunks is None:
+            lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
+        elif rhs.chunks is None:
+            rhs = rhs.chunk(dict(zip(lhs.dims, lhs.chunks)))
     else:
         is_dask = False
-        isclose = np.isclose
 
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
     if lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
         # Both arrays are numeric
+        if is_dask:
+            import dask.array as da
+
+            isclose = da.isclose
+        else:
+            isclose = np.isclose
+
         mask = ~isclose(lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
     elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
         # Both arrays are datetime64
@@ -560,8 +560,8 @@ def _diff_dataarrays(
         brief_axes = {axis for axis, dim in enumerate(lhs.dims) if dim in brief_dims}
     del brief_dims
 
-    full_coords = {
-        dim: lhs.coords[dim]
+    full_indices = {
+        dim: lhs.coords[dim].to_index()
         for axis, dim in enumerate(lhs.dims)
         if axis not in brief_axes
     }
@@ -608,30 +608,74 @@ def _diff_dataarrays(
 
     msg_prefix = "".join(f"[{elem}]" for elem in path)
 
+    diffs_coords = []
+    for labels, idxidx in zip(full_indices.values(), diffs_idx):
+        if isinstance(labels, pd.RangeIndex) and labels.start == 0 and labels.step == 1:
+            diffs_coord = idxidx
+        else:
+            labels = np.asarray(labels)  # Not the same as labels.values for strings
+            if is_dask:
+                import dask.array as da
+
+                labels = da.asarray(labels, chunks=-1)
+            diffs_coord = labels[idxidx]
+        diffs_coords.append(diffs_coord)
+
     args: tuple
     if brief_axes:
         pp_func = _diff_dataarrays_print_brief
-        args = (diffs_count, diffs_idx, full_coords, msg_prefix)  # type: ignore[possibly-undefined]
+        args = (diffs_count, *diffs_coords)  # type: ignore[possibly-undefined]
+    elif lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
+        pp_func = _diff_dataarrays_print_full_tol  # type: ignore[assignment]
+        abs_delta = diffs_rhs - diffs_lhs  # type: ignore[possibly-undefined]
+        if is_dask:
+            import dask.array as da
+
+            rel_delta = da.map_blocks(_rel_delta, diffs_lhs, diffs_rhs, dtype=float)
+        else:
+            rel_delta = _rel_delta(diffs_lhs, diffs_rhs)
+        args = (diffs_lhs, diffs_rhs, abs_delta, rel_delta, *diffs_coords)
     else:
         pp_func = _diff_dataarrays_print_full  # type: ignore[assignment]
-        args = (diffs_lhs, diffs_rhs, diffs_idx, full_coords, msg_prefix)  # type: ignore[possibly-undefined]
+        args = (diffs_lhs, diffs_rhs, *diffs_coords)  # type: ignore[possibly-undefined]
+
+    dim_tags = tuple(
+        # Prettier output when there was no coord at the beginning,
+        # e.g. with plain numpy arrays
+        "" if re.match(r"^dim_\d$", str(dim)) else f"{dim}="
+        for dim in full_indices
+    )
+    pp_func = partial(pp_func, dim_tags=dim_tags, msg_prefix=msg_prefix)
 
     if is_dask:
-        from dask import delayed
+        import dask.array as da
 
-        yield delayed(pp_func)(*args)
-
+        yield da.map_blocks(
+            partial(_generator_to_array, pp_func),
+            *args,
+            dtype=object,
+            meta=np.array([], dtype=object),
+        )
     else:
         yield from pp_func(*args)
 
 
+def _generator_to_array(func: Callable[..., Generator[str]], *args: Any) -> np.ndarray:
+    """Convert a generator of strings to a NumPy array of strings.
+    This is used when the generator is the output of Dask's map_blocks, which
+    requires a NumPy array output.
+    """
+    gen = func(*args)
+    return np.array(list(gen), dtype="T" if NUMPY_GE_200 else object)
+
+
 def _diff_dataarrays_print_full(
-    diffs_lhs: np.ndarray,
-    diffs_rhs: np.ndarray,
-    diffs_idx: list[np.ndarray],
-    coords: dict[Hashable, xarray.DataArray],
+    lhs: np.ndarray,
+    rhs: np.ndarray,
+    *coords: np.ndarray,
+    dim_tags: tuple[str, ...],
     msg_prefix: str,
-) -> list[str]:
+) -> Generator[str]:
     """Final step of diffing two DataArrays, for when brief_dims is disjoint from
     the array's dims.
 
@@ -642,122 +686,98 @@ def _diff_dataarrays_print_full(
     All arrays are one-dimensional aligned and same-sized np.ndarray objects, one point
     per diff to be returned.
 
-    :param diffs_lhs:
+    :param lhs:
         Array of the values of the elements that differ in lhs from rhs.
-    :param diffs_rhs:
+    :param rhs:
         Array of the values of the elements that differ in rhs from lhs.
-    :param diffs_idx:
-        List of arrays of the indices of the elements that differ, one array per
-        non-brief dimension, with potentially repeated indices.
     :param coords:
-        dict of {dim: coord} of the non-brief indices, in the same order as diffs_idx
+        Arrays of the coordinates of the elements that differ, one array per
+        non-brief dimension, with potentially repeated elements.
+    :param dim_tags:
+        Tuple of dimension 'name=' tags corresponding to the coords.
     :param msg_prefix:
         string to prepend to all messages
+    :param as_array:
+        If True, return a NumPy array of strings instead of a list. This is used
+        when the function is called from Dask's map_blocks, which requires a
+        NumPy array output.
     """
-    assert isinstance(diffs_lhs, np.ndarray)
-    assert isinstance(diffs_rhs, np.ndarray)
-    ndiff = diffs_lhs.size
-    assert diffs_rhs.size == ndiff
-    if not ndiff:
-        return []
+    ndiff = lhs.size
 
-    if diffs_lhs.dtype.kind in "iufc" and diffs_rhs.dtype.kind in "iufc":
-        with_tol = True
-        diffs_abs = diffs_rhs - diffs_lhs
-        with np.errstate(divide="ignore", invalid="ignore"):
-            diffs_rel = diffs_rhs / diffs_lhs - 1
-        # Replace inf with nan, in alignment with floats comparison
-        diffs_rel = np.where(diffs_lhs == 0, np.nan, diffs_rel)
-    else:
-        with_tol = False
-        diffs_abs = range(ndiff)  # dummy
-        diffs_rel = range(ndiff)  # dummy
+    assert rhs.size == ndiff
+    assert len(coords) == len(dim_tags)
+    assert all(c.size == ndiff for c in coords)
 
-    assert len(diffs_idx) == len(coords)
-    for idx in diffs_idx:
-        assert idx.size == ndiff
-    diffs_coords_iters = [
-        coord[idx].values for coord, idx in zip(coords.values(), diffs_idx)
-    ]
-    dim_tags = [
-        # Prettier output when there was no coord at the beginning,
-        # e.g. with plain numpy arrays
-        re.sub(r"^dim_\d=$", "", f"{dim}=")
-        for dim in coords
-    ]
-
-    # Can't use a generator as this function may be delayed
-    diff_msgs = []
-
-    for lhs_value, rhs_value, abs_value, rel_value, *diff_coords in zip(
-        diffs_lhs,
-        diffs_rhs,
-        diffs_abs,
-        diffs_rel,
-        *diffs_coords_iters,
-    ):
-        addr = ", ".join(f"{dim_tag}{i}" for dim_tag, i in zip(dim_tags, diff_coords))
+    for lhs_value, rhs_value, *coords_i in zip(lhs, rhs, *coords):
+        addr = ", ".join(f"{t}{c}" for t, c in zip(dim_tags, coords_i))
         msg = f"{msg_prefix}[{addr}]: {lhs_value} != {rhs_value}"
-        if with_tol:
-            msg += f" (abs: {abs_value:.1e}, rel: {rel_value:.1e})"
-        diff_msgs.append(msg)
+        yield msg
 
-    return diff_msgs
+
+def _rel_delta(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+    """Calculate relative difference, with a quiet nan when dividing by zero.
+    In Dask, this must be done inside map_blocks to correctly capture NumPy warnings.
+    """
+    with np.errstate(divide="ignore", invalid="ignore"):
+        diffs_rel = rhs / lhs - 1
+    # Replace inf with nan, in alignment with floats comparison
+    return np.where(lhs == rhs, 0, np.where(lhs == 0, np.nan, diffs_rel))
+
+
+def _diff_dataarrays_print_full_tol(
+    lhs: np.ndarray,
+    rhs: np.ndarray,
+    abs_delta: np.ndarray,
+    rel_delta: np.ndarray,
+    *coords: np.ndarray,
+    dim_tags: tuple[str, ...],
+    msg_prefix: str,
+) -> Generator[str]:
+    """Variant of _diff_dataarrays_print_full, with delta printouts"""
+    ndiff = lhs.size
+
+    assert rhs.size == ndiff
+    assert abs_delta.size == ndiff
+    assert rel_delta.size == ndiff
+    assert len(coords) == len(dim_tags)
+    assert all(c.size == ndiff for c in coords)
+
+    for lhs_value, rhs_value, abs_value, rel_value, *coords_i in zip(
+        lhs, rhs, abs_delta, rel_delta, *coords
+    ):
+        addr = ", ".join(f"{t}{c}" for t, c in zip(dim_tags, coords_i))
+        yield (
+            f"{msg_prefix}[{addr}]: {lhs_value} != {rhs_value} "
+            f"(abs: {abs_value:.1e}, rel: {rel_value:.1e})"
+        )
 
 
 def _diff_dataarrays_print_brief(
-    diffs_count: np.ndarray,
-    diffs_idx: list[np.ndarray],
-    coords: dict[Hashable, xarray.DataArray],
+    count: np.ndarray,
+    *coords: np.ndarray,
+    dim_tags: tuple[str, ...],
     msg_prefix: str,
-) -> list[str]:
+) -> Generator[str]:
     """Variant of _diff_dataarrays_print_brief for when there is at least one brief dim.
 
-    The data has all been loaded to disk and compared by _diff_dataarrays.
-    If there was a Dask backend, the Dask arrays have been computed by delayed() into
-    NumPy arrays.
-
-    All arrays are one-dimensional aligned and same-sized np.ndarray objects, one point
-    per diff to be returned.
-
-    :param diffs_count:
+    :param count:
         Array of the count of differences along all brief_dims, one point per non-brief
         dim, flattened.
-    :param diffs_idx:
-        List of arrays of the indices of the elements that differ, one array per
-        non-brief dimension, with potentially repeated indices.
-    :param coords:
-        dict of {dim: coord} of the non-brief indices, in the same order as diffs_idx
-    :param msg_prefix:
-        string to prepend to all messages
     """
-    ndiff = diffs_count.size
+    ndiff = count.size
 
-    for idx in diffs_idx:
-        assert idx.size == ndiff
+    assert len(coords) == len(dim_tags)
+    assert all(c.size == ndiff for c in coords)
 
-    if not diffs_count.ndim:
+    if not count.ndim:
         # Scalar outcome of brief_dims collapsing all dimensions
-        if diffs_count:
-            return [f"{msg_prefix}: {diffs_count} differences"]
-        return []
+        if count:
+            yield f"{msg_prefix}: {count} differences"
+        return
 
-    diffs_coords = [coord[idx].values for coord, idx in zip(coords.values(), diffs_idx)]
-    dim_tags = [
-        # Prettier output when there was no coord at the beginning,
-        # e.g. with plain numpy arrays
-        re.sub(r"^dim_\d=$", "", f"{dim}=")
-        for dim in coords
-    ]
-
-    # Can't use a generator as this function may be delayed
-    diff_msgs = []
-
-    for count, *diff_coords in zip(diffs_count, *diffs_coords):
-        addr = ", ".join(f"{dim_tag}{i}" for dim_tag, i in zip(dim_tags, diff_coords))
-        diff_msgs.append(f"{msg_prefix}[{addr}]: {count} differences")
-
-    return diff_msgs
+    for count_i, *coords_i in zip(count, *coords):
+        addr = ", ".join(f"{t}{c}" for t, c in zip(dim_tags, coords_i))
+        yield f"{msg_prefix}[{addr}]: {count_i} differences"
 
 
 def _array0d_to_scalar(x: xarray.DataArray) -> Any:

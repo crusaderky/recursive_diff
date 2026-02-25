@@ -173,8 +173,7 @@ def test_identical(x):
     ],
 )
 def test_identical_dask(x):
-    x = x.chunk()
-    assert not list(recursive_diff(x, deepcopy(x)))
+    check(x.chunk(), deepcopy(x).chunk())
 
 
 def test_simple():
@@ -1310,14 +1309,19 @@ def test_lazy_datasets_without_dask(tmp_path):
 @requires_zarr
 @pytest.mark.slow
 @pytest.mark.thread_unsafe(reason="process-wide memory readings")
-@pytest.mark.parametrize("chunks,max_peak", [(None, 200), ("auto", 80)])
+@pytest.mark.parametrize(
+    "chunks,max_peak",
+    [pytest.param(None, 50, id="no dask"), pytest.param({}, 50, id="dask")],
+)
 @pytest.mark.parametrize("format", ["netcdf", "zarr"])
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):
     import dask.array as da
     import dask.config
 
-    # 320 MiB, 8 MiB per variable
-    a = xarray.Dataset({f"v{i}": ("x", da.random.random(1_000_000)) for i in range(40)})
+    # 320 MiB, 8 MiB per variable, 2 MiB per chunk, indices are pd.RangeIndex
+    a = xarray.Dataset(
+        {f"v{i}": ("x", da.random.random(1_000_000, chunks=250_000)) for i in range(40)}
+    )
     if format == "netcdf":
         a.to_netcdf(tmp_path / "a.nc")
         b = xarray.open_dataset(tmp_path / "a.nc", chunks=chunks)
