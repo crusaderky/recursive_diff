@@ -1394,7 +1394,8 @@ def test_distributed_index_bloom():
 
     with dask.config.set(
         {
-            "array.rechunk.method": "tasks",  # Prevent warning and crash
+            # P2P rechunk is slower and takes more memory!
+            "array.rechunk.method": "tasks",
             "distributed.worker.memory.spill": False,
         }
     ), distributed.Client(
