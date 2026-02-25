@@ -1510,13 +1510,16 @@ def test_as_dataframes_brief_dims(chunk):
     actual = list(recursive_diff(a, b, as_dataframes=True, brief_dims=["x"]))
     pd.testing.assert_frame_equal(
         actual[0][1],
-        pd.DataFrame({"diffs_count": [1], "y": [1]}).set_index(["y"]),
+        pd.DataFrame(
+            {"diffs_count": np.asarray([1])}, 
+            index=pd.Index(np.asarray([1]), name="y"),
+        ),
     )
 
     actual = list(recursive_diff(a, b, as_dataframes=True, brief_dims=["y"]))
     pd.testing.assert_frame_equal(
         actual[0][1],
-        pd.DataFrame({"diffs_count": [1], "x": ["b"]}).set_index(["x"]),
+        pd.DataFrame({"diffs_count": np.asarray([1])}, index=pd.Index(["b"], name="x")),
     )
 
     # When all dims are brief, ignore as_dataframes
