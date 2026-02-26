@@ -12,11 +12,12 @@ def recursive_eq(
     rhs: Any,
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
-    *,
+    *,  # TODO move before rel_tol (breaking change)
     brief_dims: Collection[Hashable] | Literal["all"] = (),
 ) -> None:
     """Wrapper around :func:`~recursive_diff.recursive_diff`.
-    Print out all differences and finally assert that there are none.
+    Print out all differences to stdout and finally assert that there are none.
+    This is meant to be used inside pytest, where stdout is captured.
     """
     diffs_iter = recursive_diff(
         lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol, brief_dims=brief_dims

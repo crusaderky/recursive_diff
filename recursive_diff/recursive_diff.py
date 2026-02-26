@@ -11,14 +11,14 @@ import re
 import typing
 from collections.abc import Callable, Collection, Generator, Hashable
 from functools import partial
-from typing import Any, Literal, overload
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 import xarray
 
 from recursive_diff.cast import MissingKeys, cast
-from recursive_diff.dask_compat import Array, Delayed
+from recursive_diff.dask_compat import Array, Delayed, compute
 
 NUMPY_GE_200 = int(np.__version__.split(".")[0]) >= 2
 PANDAS_GE_200 = int(pd.__version__.split(".")[0]) >= 2
@@ -48,7 +48,6 @@ def is_basic_noncontainer(x: object) -> bool:
 DO_NOT_CAST_TYPES = {bool, int, float, complex, str, bytes, list, dict, set, type(None)}
 
 
-@overload
 def recursive_diff(
     lhs: Any,
     rhs: Any,
@@ -56,31 +55,7 @@ def recursive_diff(
     rel_tol: float = 1e-09,
     abs_tol: float = 0.0,
     brief_dims: Collection[Hashable] | Literal["all"] = (),
-    as_dataframes: Literal[False] = False,
-) -> Generator[str]: ...
-
-
-@overload
-def recursive_diff(
-    lhs: Any,
-    rhs: Any,
-    *,
-    rel_tol: float = 1e-09,
-    abs_tol: float = 0.0,
-    brief_dims: Collection[Hashable] | Literal["all"] = (),
-    as_dataframes: Literal[True],
-) -> Generator[str | tuple[str, pd.DataFrame]]: ...
-
-
-def recursive_diff(
-    lhs: Any,
-    rhs: Any,
-    *,
-    rel_tol: float = 1e-09,
-    abs_tol: float = 0.0,
-    brief_dims: Collection[Hashable] | Literal["all"] = (),
-    as_dataframes: bool = False,
-) -> Generator[str | tuple[str, pd.DataFrame]]:
+) -> Generator[str]:
     """Compare two objects and yield all differences.
     The two objects must any of:
 
@@ -141,14 +116,6 @@ def recursive_diff(
 
         Omit to output a line for every single different cell.
 
-    :param bool as_dataframes:
-        If False (default), differences in array objects will produce strings,
-        one difference per line.
-        If True, differences in array objects will produce tuples of (array path,
-        pd.DataFrame) which are easier to visualize e.g. in Jupyter Notebook or to print
-        out to CSV. Differences in metadata and indices are still going to be printed as
-        separate strings.
-
     Yields strings containing difference messages, prepended by the path to
     the point that differs.
     """
@@ -158,54 +125,31 @@ def recursive_diff(
     # found, without waiting for the whole recursion to finish. Once we encounter a
     # Delayed or dask-backed xarray object, we start accumulating all eager messages and
     # Delayed[list[str]] in a list and compute all the delayeds at once.
-    diffs: list[Any] = []
+    diffs: list[list[str] | Array | Delayed] = []
     for diff in _recursive_diff(
         lhs,
         rhs,
         rel_tol=rel_tol,
         abs_tol=abs_tol,
         brief_dims=brief_dims,
-        as_dataframes=as_dataframes,
+        as_dataframes=False,
         path=[],
         seen_lhs={},
         seen_rhs={},
     ):
-        if not diffs and isinstance(diff, str):
-            yield diff
-        elif (
-            as_dataframes
-            and not diffs
-            and isinstance(diff, tuple)
-            and all(isinstance(v, np.ndarray) for v in diff[2])
-        ):
-            path, constructor, args = diff
-            if args[0].size:
-                yield path, constructor(*args)
+        if isinstance(diff, str):
+            if diffs:
+                diffs.append([diff])
+            else:
+                yield diff
         else:
+            assert isinstance(diff, (Delayed, Array))
+            # Comparison of Delayed objects or Dask-backed arrays
             diffs.append(diff)
 
-    if not diffs:
-        return
-
-    import dask
-
-    # Override default scheduler for Delayed, which would be multiprocessing.
-    # We use Delayed to post-process the comparison of Dask-backed Xarrays.
-
-    # This has the disadvantage that JSON, JSONL, YAML, and MessagePack files
-    # comparison contends for the GIL. Eventually this problem will go away once
-    # free-threading becomes the norm.
-    scheduler = dask.config.get("scheduler", "threads")
-    (computed_diffs,) = dask.compute(diffs, scheduler=scheduler)
-    for computed_diff in computed_diffs:
-        if isinstance(computed_diff, str):
-            yield computed_diff
-        elif isinstance(computed_diff, tuple):
-            path, constructor, args = computed_diff
-            if args[0].size:
-                yield path, constructor(*args)
-        else:
-            yield from computed_diff
+    (computed_diffs,) = compute(diffs)
+    for diff_batch in computed_diffs:
+        yield from diff_batch
 
 
 def _recursive_diff(
