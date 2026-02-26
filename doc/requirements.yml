@@ -8,6 +8,12 @@ dependencies:
 - python *
 - dask-core *
 - distributed *
+- msgpack-python *
+- pyyaml *
+- netcdf4 *
+- scipy *
+- h5netcdf *
+- zarr *
 - pip *
 - sphinx *
 - sphinx_rtd_theme *
