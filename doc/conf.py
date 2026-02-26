@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
     "sphinx.ext.mathjax",
+    "myst_nb",
 ]
 
 extlinks = {
@@ -302,3 +303,7 @@ intersphinx_mapping = {
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
 }
+
+# Myst-NB configuration
+nb_execution_mode = "force"
+nb_execution_raise_on_error = True

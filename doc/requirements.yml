@@ -6,9 +6,18 @@ channels:
 dependencies:
 - python 3.14.*
 - python *
+- dask-core *
+- distributed *
+- msgpack-python *
+- pyyaml *
+- netcdf4 *
+- scipy *
+- h5netcdf *
+- zarr *
 - pip *
 - sphinx *
 - sphinx_rtd_theme *
+- myst-nb *
 - numpy *
 - pandas *
 - xarray *
