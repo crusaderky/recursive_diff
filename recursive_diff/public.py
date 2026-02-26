@@ -8,8 +8,8 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from recursive_diff.core import recursive_diff_impl
 from recursive_diff.dask_compat import Array, Delayed, compute
-from recursive_diff.recursive_diff import recursive_diff_impl
 
 
 def recursive_diff(
