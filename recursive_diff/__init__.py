@@ -2,9 +2,12 @@ import importlib.metadata
 
 from recursive_diff.cast import cast
 from recursive_diff.files import open, recursive_open
-from recursive_diff.public import diff_arrays, display_diffs
-from recursive_diff.recursive_diff import recursive_diff
-from recursive_diff.recursive_eq import recursive_eq
+from recursive_diff.public import (
+    diff_arrays,
+    display_diffs,
+    recursive_diff,
+    recursive_eq,
+)
 
 try:
     __version__ = importlib.metadata.version("recursive_diff")
