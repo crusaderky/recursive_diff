@@ -21,10 +21,8 @@ from recursive_diff.files import (
     logger,
     recursive_open,
 )
-from recursive_diff.files import (
-    open as open_,
-)
-from recursive_diff.recursive_diff import recursive_diff
+from recursive_diff.files import open as open_
+from recursive_diff.public import recursive_diff
 
 LOGFORMAT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
