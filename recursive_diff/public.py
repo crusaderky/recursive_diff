@@ -124,7 +124,8 @@ def recursive_eq(
     *,  # TODO move before rel_tol (breaking change)
     brief_dims: Collection[Hashable] | Literal["all"] = (),
 ) -> None:
-    """Wrapper around :func:`~recursive_diff.recursive_diff`.
+    """Wrapper around :func:`recursive_diff`.
+
     Print out all differences to stdout and finally assert that there are none.
     This is meant to be used inside pytest, where stdout is captured.
     """
@@ -152,13 +153,14 @@ def diff_arrays(
     abs_tol: float = 0.0,
     brief_dims: Collection[Hashable] | Literal["all"] = (),
 ) -> tuple[dict[str, pd.DataFrame], list[str]]:
-    """Compare two objects with :func:`~recursive_diff.recursive_diff`.
+    """Compare two objects with :func:`recursive_diff`.
 
     Return tuple of:
 
-    - {path: dataframe of differences} for all array objects found.
+    - {path: dataframe of differences} for all NumPy, Pandas, and Xarray objects found.
       Arrays with no differences won't be returned.
-    - List of all other differences found.
+    - List of all other differences found. This includes differences in metadata,
+      shape, dtype, and indices in NumPy, Pandas, and Xarray objects.
     """
     diffs = list(
         recursive_diff_impl(
@@ -207,10 +209,10 @@ def display_diffs(
     abs_tol: float = 0.0,
     brief_dims: Collection[Hashable] | Literal["all"] = (),
 ) -> None:
-    """Compare two objects with :func:`~recursive_diff.recursive_diff`.
+    """Compare two objects with :func:`recursive_diff`.
 
-    Display all differences in Jupyter notebook, with diffs in array objects
-    displayed as tables.
+    Display all differences in Jupyter notebook, with diffs in NumPy, Pandas, and Xarray
+    objects displayed as tables.
     """
     from IPython.display import HTML, display
 
