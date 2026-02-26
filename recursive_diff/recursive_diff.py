@@ -659,14 +659,14 @@ def _diff_dataarrays(
         build_df = partial(_build_dataframe, ["lhs", "rhs"], list(full_indices))
 
     if as_dataframes and full_indices:
-        # Note: xarray doesn't support NaN size; can't build a Dataset
-        # from the dask arrays here
+        # Note: Xarray doesn't support NaN size; can't build a Dataset
+        # from the Dask arrays here
         yield msg_prefix, typing.cast("Callable[..., pd.DataFrame]", build_df), args
         return
 
     dim_tags = tuple(
         # Prettier output when there was no coord at the beginning,
-        # e.g. with plain numpy arrays
+        # e.g. with plain NumPy arrays
         "" if re.match(r"^dim_\d$", str(dim)) else f"{dim}="
         for dim in full_indices
     )
