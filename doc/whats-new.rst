@@ -5,9 +5,13 @@ What's New
 
 v2.1.0 (unreleased)
 -------------------
+- New function :func:`diff_arrays` that returns dataframes of differences instead
+  of text messages for all differences in numpy, pandas, and xarray objects
+- New function :func:`display_diffs` that displays differences
+  in Jupyter notebooks
 - Fixed issue that would cause excessive RAM usage when comparing Dask arrays with
   2+ dimensions using a distributed scheduler
-- Added support for P2P rechunk in distributed Dask
+- Added support for P2P rechunk in Dask distributed
 
 
 v2.0.0 (2026-02-22)

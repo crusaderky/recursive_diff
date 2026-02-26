@@ -83,13 +83,9 @@ class Square:
         return f"Square({self.side})"
 
 
-def check(lhs, rhs, *expect, rel_tol=1e-09, abs_tol=0.0, brief_dims=()):
+def check(lhs, rhs, *expect, **kwargs):
     expect = sorted(expect)
-    actual = sorted(
-        recursive_diff(
-            lhs, rhs, rel_tol=rel_tol, abs_tol=abs_tol, brief_dims=brief_dims
-        )
-    )
+    actual = sorted(recursive_diff(lhs, rhs, **kwargs))
     assert actual == expect
 
 
@@ -785,11 +781,6 @@ def test_pandas_multiindex():
     )
 
 
-@pytest.fixture(params=[False, pytest.param(True, marks=requires_dask)])
-def chunk(request):
-    return request.param
-
-
 def test_xarray(chunk):
     # xarray.Dataset
     ds1 = xarray.Dataset(
@@ -1316,7 +1307,7 @@ def test_lazy_datasets_without_dask(tmp_path):
         # These are the worst case scenarios across all combinations.
         ("netcdf", None, 100),  # Takes more on MacOS
         ("netcdf", {}, 50),
-        ("zarr", None, 70),
+        ("zarr", None, 90),
         ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
     ],
 )

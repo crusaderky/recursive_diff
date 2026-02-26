@@ -224,6 +224,12 @@ ipython = "*"
 [tool.pixi.feature.ipython.tasks]
 ipython = { cmd = "ipython", description = "Launch IPython" }
 
+[tool.pixi.feature.jupyter.dependencies]
+jupyterlab = "*"
+
+[tool.pixi.feature.jupyter.tasks]
+jupyter = { cmd = "jupyter lab", description = "Launch JupyterLab" }
+
 [tool.pixi.feature.py39.dependencies]
 python = "=3.9"
 
@@ -303,7 +309,7 @@ twine-check = { cmd = "python -m twine check dist/*" }
 twine-upload = { cmd = "python -m twine upload dist/*" }
 
 [tool.pixi.environments]
-default = { features = ["py314", "dask", "files", "docs", "smoke", "tests", "ipython"] }
+default = { features = ["py314", "dask", "files", "docs", "smoke", "tests", "ipython", "jupyter"] }
 dist = { features = ["dist"], no-default-feature = true }
 lint = { features = ["lint"] }
 docs = { features = ["py314", "docs"] }

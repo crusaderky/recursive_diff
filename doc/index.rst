@@ -1,5 +1,7 @@
 recursive_diff: Compare two Python data structures
 ==================================================
+.. currentmodule:: recursive_diff
+
 **JSON**, **JSONL**, **YAML** and **MessagePack** are massively popular formats used to
 represent nested data. A problem arises when you want to compare two large JSON-like
 data structures, because the `==` operator will tell you if the two structures differ
@@ -16,17 +18,16 @@ NumPy-based data structures, such as :class:`pandas.DataFrame` objects or data l
 from **Zarr**, **netCDF**, or **HDF5** datastores. Again, it is very frequently needed
 to identify *where* differences are, and apply tolerance to the comparison.
 
-This module offers the function :func:`~recursive_diff.recursive_diff`, which crawls
-through two arbitrarily large nested JSON-like structures and dumps out all the
-differences. Python-specific data types, such as :class:`set` and :class:`tuple`, are
-also supported. `NumPy`_, `Pandas`_, and `Xarray`_ are supported and optimized for
-speed. A variant function, :func:`~recursive_diff.recursive_eq`, is designed to be used
-in unit tests.
+This module offers the function :func:`recursive_diff`, which crawls through two
+arbitrarily large nested JSON-like structures and dumps out all the differences.
+Python-specific data types, such as :class:`set` and :class:`tuple`, are also supported.
+`NumPy`_, `Pandas`_, and `Xarray`_ are supported and optimized for speed. Two variant
+functions, :func:`display_diffs` and :func:`recursive_eq`, are designed to be used in
+Jupyter Notebooks and unit tests respectively.
 
 You can load a whole directory tree of JSON, JSONL, YAML, MessagePack, netCDF, or Zarr
-files with one call to :func:`~recursive_diff.recursive_open` and then pass it to
-:func:`~recursive_diff.recursive_diff` or :func:`~recursive_diff.recursive_eq` to
-compare it to another directory tree.
+files with one call to :func:`recursive_open` and then pass it to :func:`recursive_diff`
+or :func:`recursive_eq` to compare it to another directory tree.
 
 Finally, a :doc:`cli` allows comparing two files in any of the formats above, or two
 directory trees full of files, as long as they can be loaded with
