@@ -40,8 +40,10 @@ Index
 
    quickstart
    installing
-   api
+   notebooks
+   dask
    extend
+   api
    cli
    develop
    whats-new

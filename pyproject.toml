@@ -212,6 +212,7 @@ open-coverage = { cmd = "open htmlcov/index.html", depends-on = ["coverage"], de
 pip = "*"
 sphinx = "*"
 sphinx_rtd_theme = "*"
+myst-nb = "*"
 
 [tool.pixi.feature.docs.tasks]
 docs = { cmd = "sphinx-build -n -j auto -b html -d ../build/doctrees . ../build/html", env = { PYTHONPATH = "$PIXI_PROJECT_ROOT" }, cwd = "doc", description = "Build docs" }
@@ -312,7 +313,7 @@ twine-upload = { cmd = "python -m twine upload dist/*" }
 default = { features = ["py314", "dask", "files", "docs", "smoke", "tests", "ipython", "jupyter"] }
 dist = { features = ["dist"], no-default-feature = true }
 lint = { features = ["lint"] }
-docs = { features = ["py314", "docs"] }
+docs = { features = ["py314", "dask", "files", "docs"] }
 mindeps = { features = ["mindeps", "smoke", "tests"] }
 xarray2024-5 = { features = ["xarray2024-5", "smoke", "tests"] }
 py39 = { features = ["py39", "dask", "files", "smoke", "tests"] }
