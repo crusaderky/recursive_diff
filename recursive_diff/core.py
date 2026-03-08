@@ -430,15 +430,7 @@ def _diff_dataarrays(
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
     if lhs.dtype.kind in "iufc" and rhs.dtype.kind in "iufc":
-        # Both arrays are numeric
-        if is_dask:
-            import dask.array as da
-
-            isclose = da.isclose
-        else:
-            isclose = np.isclose
-
-        mask = ~isclose(lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
+        mask = ~np.isclose(lhs.data, rhs.data, rtol=rel_tol, atol=abs_tol, equal_nan=True)
     elif lhs.dtype.kind == "M" and rhs.dtype.kind == "M":
         # Both arrays are datetime64
         # Unlike with np.isclose(equal_nan=True), there is no
