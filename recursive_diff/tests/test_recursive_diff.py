@@ -1478,3 +1478,28 @@ def test_p2p_rechunk():
 
     with distributed.Client(n_workers=2, threads_per_worker=1):
         check(a, b, "[data][x=c]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)")
+
+
+@requires_dask
+def test_do_not_duplicate_input_graph():
+    """Test that recursive_diff does not encroach on
+    https://github.com/dask/dask/issues/12318
+    """
+    import dask.array as da
+
+    count = []
+
+    def f(x):
+        count.append(x[0].item())
+        return x
+
+    a = xarray.DataArray(da.asarray(["a"]).map_blocks(f), name="x")
+    b = xarray.DataArray(da.asarray(["b"]).map_blocks(f), name="x")
+    count.clear()
+
+    check(a, b, "[data][0]: a != b")
+    assert sorted(count) == ["a", "b"]
+    count.clear()
+
+    check(a, b, "[data]: 1 differences", brief_dims="all")
+    assert sorted(count) == ["a", "b"]
