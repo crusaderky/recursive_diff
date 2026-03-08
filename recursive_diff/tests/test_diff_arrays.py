@@ -52,7 +52,7 @@ def test_diff_arrays(chunk):
                 "abs_delta": [1.0],
                 "rel_delta": [0.25],
                 "x": ["b"],
-                "y": np.asarray([1]),
+                "y": np.asarray([1], dtype=np.int_),
             }
         ).set_index(["x", "y"]),
     )
@@ -61,7 +61,7 @@ def test_diff_arrays(chunk):
         arrays["[3][data]"],
         pd.DataFrame(
             {"lhs": ["bar"], "rhs": ["baz"]},
-            index=pd.Index(np.asarray([1]), name="dim_0"),
+            index=pd.Index(np.asarray([1], dtype=np.int_), name="dim_0"),
         ),
     )
 

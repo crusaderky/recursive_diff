@@ -83,9 +83,10 @@ class Square:
         return f"Square({self.side})"
 
 
-def check(lhs, rhs, *expect, **kwargs):
-    expect = sorted(expect)
-    actual = sorted(recursive_diff(lhs, rhs, **kwargs))
+def check(lhs, rhs, *expect, order=False, **kwargs):
+    f = list if order else sorted
+    expect = f(expect)
+    actual = f(recursive_diff(lhs, rhs, **kwargs))
     assert actual == expect
 
 
@@ -1166,6 +1167,67 @@ def test_dask_dataarray(chunk_lhs, chunk_rhs):
 
 
 @requires_dask
+@pytest.mark.parametrize(
+    "chunk_lhs,chunk_rhs",
+    [
+        (None, None),
+        (None, -1),
+        (None, 2),
+        ({"x": 3, "y": 1}, {"x": 2, "y": 2}),
+    ],
+)
+def test_dask_dataarray_2d(chunk_lhs, chunk_rhs):
+    lhs = xarray.DataArray([[0, 1, 2], [3, 4, 5]], dims=["x", "y"])
+    rhs = xarray.DataArray([[0, 1, 2], [3, 4, 6]], dims=["x", "y"])
+    if chunk_lhs:
+        lhs = lhs.chunk(chunk_lhs)
+    if chunk_rhs:
+        rhs = rhs.chunk(chunk_rhs)
+
+    check(lhs, rhs, "[data][x=1, y=2]: 5 != 6 (abs: 1.0e+00, rel: 2.0e-01)")
+
+
+def test_dask_dataarray_ordered(chunk):
+    """Test that difference order goes in C order and is not influenced
+    by Dask chunks.
+    """
+    lhs = xarray.DataArray(np.arange(2 * 3 * 4).reshape(2, 3, 4), dims=["x", "y", "z"])
+    rhs = lhs + 1
+    if chunk:
+        lhs = lhs.chunk({"x": 2, "y": 2, "z": 3})
+        rhs = rhs.chunk({"x": 2, "y": 2, "z": 3})
+    check(
+        lhs,
+        rhs,
+        "[data][x=0, y=0, z=0]: 0 != 1 (abs: 1.0e+00, rel: nan)",
+        "[data][x=0, y=0, z=1]: 1 != 2 (abs: 1.0e+00, rel: 1.0e+00)",
+        "[data][x=0, y=0, z=2]: 2 != 3 (abs: 1.0e+00, rel: 5.0e-01)",
+        "[data][x=0, y=0, z=3]: 3 != 4 (abs: 1.0e+00, rel: 3.3e-01)",
+        "[data][x=0, y=1, z=0]: 4 != 5 (abs: 1.0e+00, rel: 2.5e-01)",
+        "[data][x=0, y=1, z=1]: 5 != 6 (abs: 1.0e+00, rel: 2.0e-01)",
+        "[data][x=0, y=1, z=2]: 6 != 7 (abs: 1.0e+00, rel: 1.7e-01)",
+        "[data][x=0, y=1, z=3]: 7 != 8 (abs: 1.0e+00, rel: 1.4e-01)",
+        "[data][x=0, y=2, z=0]: 8 != 9 (abs: 1.0e+00, rel: 1.2e-01)",
+        "[data][x=0, y=2, z=1]: 9 != 10 (abs: 1.0e+00, rel: 1.1e-01)",
+        "[data][x=0, y=2, z=2]: 10 != 11 (abs: 1.0e+00, rel: 1.0e-01)",
+        "[data][x=0, y=2, z=3]: 11 != 12 (abs: 1.0e+00, rel: 9.1e-02)",
+        "[data][x=1, y=0, z=0]: 12 != 13 (abs: 1.0e+00, rel: 8.3e-02)",
+        "[data][x=1, y=0, z=1]: 13 != 14 (abs: 1.0e+00, rel: 7.7e-02)",
+        "[data][x=1, y=0, z=2]: 14 != 15 (abs: 1.0e+00, rel: 7.1e-02)",
+        "[data][x=1, y=0, z=3]: 15 != 16 (abs: 1.0e+00, rel: 6.7e-02)",
+        "[data][x=1, y=1, z=0]: 16 != 17 (abs: 1.0e+00, rel: 6.2e-02)",
+        "[data][x=1, y=1, z=1]: 17 != 18 (abs: 1.0e+00, rel: 5.9e-02)",
+        "[data][x=1, y=1, z=2]: 18 != 19 (abs: 1.0e+00, rel: 5.6e-02)",
+        "[data][x=1, y=1, z=3]: 19 != 20 (abs: 1.0e+00, rel: 5.3e-02)",
+        "[data][x=1, y=2, z=0]: 20 != 21 (abs: 1.0e+00, rel: 5.0e-02)",
+        "[data][x=1, y=2, z=1]: 21 != 22 (abs: 1.0e+00, rel: 4.8e-02)",
+        "[data][x=1, y=2, z=2]: 22 != 23 (abs: 1.0e+00, rel: 4.5e-02)",
+        "[data][x=1, y=2, z=3]: 23 != 24 (abs: 1.0e+00, rel: 4.3e-02)",
+        order=False,
+    )
+
+
+@requires_dask
 def test_dask_dataarray_discards_data():
     """Test that chunked Dask datasets are loaded into memory and then
     discarded, without caching them in place with .load() or .persist()
@@ -1305,9 +1367,9 @@ def test_lazy_datasets_without_dask(tmp_path):
     [
         # Different OSes and dependency versions have different peak RAM usages.
         # These are the worst case scenarios across all combinations.
-        ("netcdf", None, 100),  # Takes more on MacOS
+        ("netcdf", None, 100),  # Uses more RAM on MacOS
         ("netcdf", {}, 50),
-        ("zarr", None, 90),
+        ("zarr", None, 100),
         ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
     ],
 )

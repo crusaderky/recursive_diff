@@ -170,6 +170,7 @@ distributed = "*"
 msgpack-python = "*"
 PyYAML = "*"
 netcdf4 = "*" # netCDF engine
+libnetcdf = "!=4.10.0" # Breaks coverage
 scipy = "*" # netCDF engine
 h5netcdf = "*" # netCDF engine
 zarr = "*"
@@ -227,6 +228,7 @@ ipython = { cmd = "ipython", description = "Launch IPython" }
 
 [tool.pixi.feature.jupyter.dependencies]
 jupyterlab = "*"
+python-graphviz = "*"
 
 [tool.pixi.feature.jupyter.tasks]
 jupyter = { cmd = "jupyter lab", description = "Launch JupyterLab" }
