@@ -170,7 +170,7 @@ distributed = "*"
 msgpack-python = "*"
 PyYAML = "*"
 netcdf4 = "*" # netCDF engine
-libnetcdf = "!=4.10.0"  # Breaks coverage
+libnetcdf = "!=4.10.0" # Breaks coverage
 scipy = "*" # netCDF engine
 h5netcdf = "*" # netCDF engine
 zarr = "*"
