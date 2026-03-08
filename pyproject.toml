@@ -227,6 +227,7 @@ ipython = { cmd = "ipython", description = "Launch IPython" }
 
 [tool.pixi.feature.jupyter.dependencies]
 jupyterlab = "*"
+python-graphviz = "*"
 
 [tool.pixi.feature.jupyter.tasks]
 jupyter = { cmd = "jupyter lab", description = "Launch JupyterLab" }
