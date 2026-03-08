@@ -61,7 +61,7 @@ def test_diff_arrays(chunk):
         arrays["[3][data]"],
         pd.DataFrame(
             {"lhs": ["bar"], "rhs": ["baz"]},
-            index=pd.Index(np.asarray([1]), name="dim_0"),
+            index=pd.Index(np.asarray([1], dtype=np.int64), name="dim_0"),
         ),
     )
 
