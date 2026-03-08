@@ -52,7 +52,7 @@ def test_diff_arrays(chunk):
                 "abs_delta": [1.0],
                 "rel_delta": [0.25],
                 "x": ["b"],
-                "y": np.asarray([1]),
+                "y": np.asarray([1], dtype=np.int64),
             }
         ).set_index(["x", "y"]),
     )
