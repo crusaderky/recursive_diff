@@ -6,7 +6,9 @@ See also its most commonly used wrapper:
 
 from __future__ import annotations
 
+import itertools
 import math
+import operator
 import re
 import typing
 from collections.abc import Callable, Collection, Generator, Hashable
@@ -422,10 +424,15 @@ def _diff_dataarrays(
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
     is_dask = lhs.chunks is not None or rhs.chunks is not None
-    if is_dask and lhs.chunks is None:
-        lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
-    elif is_dask and rhs.chunks is None:
-        rhs = rhs.chunk(dict(zip(lhs.dims, lhs.chunks)))  # type: ignore[arg-type]
+    if is_dask:
+        import dask.array as da
+
+        # Ensure that both lhs and rhs are Dask arrays and that they
+        # have aligned chunks
+        lhs_data, rhs_data = da.broadcast_arrays(lhs.data, rhs.data)
+        lhs = lhs.copy(deep=False, data=lhs_data)
+        rhs = rhs.copy(deep=False, data=rhs_data)
+        assert lhs.chunks == rhs.chunks
 
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
@@ -477,33 +484,37 @@ def _diff_dataarrays(
     #   non-brief dim, with potentially repeated indices
     # All of the arrays will have the same size, which is the number of differences.
     # For Dask-backed arrays, this whole operation is delayed.
+    diffs_idx: tuple[np.ndarray | Array, ...]
 
     if brief_axes:
         diffs_count = mask.astype(int).sum(axis=tuple(brief_axes))
         mask = diffs_count > 0
-        if mask.ndim:
-            diffs_count = diffs_count[mask]
-    else:
-        diffs_lhs = lhs.data[mask]
-        diffs_rhs = rhs.data[mask]
-
-    diffs_idx = []
-    for axis, size in enumerate(mask.shape):
-        idx_shape = (1,) * axis + (-1,) + (1,) * (mask.ndim - axis - 1)
-        if is_dask:
-            import dask.array as da
-
-            assert isinstance(mask, da.Array)
-            idx = da.arange(size, chunks=mask.chunks[axis])
-            idx = idx.reshape(idx_shape)
-            idx = da.broadcast_to(idx, mask.shape, chunks=mask.chunks)
+    if is_dask:
+        assert isinstance(mask, Array)
+        # a[mask] is very slow in Dask for 2+ dimensional arrays because it needs to
+        # preserve the order of the returned elements, so it involves rechunking. Under
+        # the assumption that the number of differences is << the number of total
+        # elements, filter each chunk independently and then full-sort the results by
+        # index.
+        diffs_idx, sort_indices = _fast_dask_nonzero(mask)
+        if brief_axes:
+            if mask.ndim:
+                diffs_count = _fast_dask_mask(diffs_count, mask, sort_indices)
         else:
-            idx = np.arange(size)
-            idx = idx.reshape(idx_shape)
-            idx = np.broadcast_to(idx, mask.shape)
-
-        idx = idx[mask]
-        diffs_idx.append(idx)
+            diffs_lhs = _fast_dask_mask(lhs.data, mask, sort_indices)
+            diffs_rhs = _fast_dask_mask(rhs.data, mask, sort_indices)
+    else:
+        assert isinstance(mask, (np.ndarray, np.generic))
+        if brief_axes:
+            if mask.ndim:
+                diffs_idx = np.nonzero(mask)
+                diffs_count = diffs_count[mask]
+            else:
+                diffs_idx = ()
+        else:
+            diffs_idx = np.nonzero(mask)
+            diffs_lhs = lhs.data[mask]
+            diffs_rhs = rhs.data[mask]
 
     msg_prefix = "".join(f"[{elem}]" for elem in path)
 
@@ -536,7 +547,7 @@ def _diff_dataarrays(
 
             rel_delta = da.map_blocks(_rel_delta, diffs_lhs, diffs_rhs, dtype=float)
         else:
-            rel_delta = _rel_delta(diffs_lhs, diffs_rhs)
+            rel_delta = _rel_delta(diffs_lhs, diffs_rhs)  # type: ignore[arg-type]
         args = (diffs_lhs, diffs_rhs, abs_delta, rel_delta, *diffs_coords)
         build_df = partial(
             _build_dataframe,
@@ -573,6 +584,96 @@ def _diff_dataarrays(
         )
     else:
         yield from pp_func(*args)
+
+
+def _fast_dask_nonzero(mask: Array) -> tuple[tuple[Array, ...], Array]:
+    """Variant of da.nonzero(mask), which is much faster when the number of
+    nonzero elements is much smaller than the total.
+
+    Returns:
+
+    - tuple of arrays of shape (nan, ), one array per axis, one point per nonzero
+      element, just like da.nonzero(mask)
+    - matching array of shape (nan, ) which is to be used by _fast_dask_mask to reorder
+      the output.
+    """
+    import dask
+    import dask.array as da
+
+    # 1. Apply np.nonzero() to each chunk independently and add the
+    # coordinates of the top-left corner of the chunk to the output
+    chunk_offsets: list[list[int]] = [
+        [0, *np.cumsum(c[:-1]).tolist()] for c in mask.chunks
+    ]
+    f = dask.delayed(_fast_dask_nonzero_chunk, pure=True)
+    delayeds = [
+        f(chunk, chunk_offset)
+        for chunk, chunk_offset in zip(
+            mask.to_delayed().reshape(-1),
+            itertools.product(*chunk_offsets),
+        )
+    ]
+    # 2. rechunk to a single chunk (needed for sorting)
+    rechunked = dask.delayed(np.concatenate, pure=True)(delayeds, axis=1)
+    nz = da.from_delayed(
+        rechunked,
+        shape=(mask.ndim, math.nan),
+        dtype=int,
+        meta=np.array([[]], dtype=int),
+    )
+    # 3. Get the order in which np.nonzero() would have returned the output
+    sort_indices = nz[::-1, :].map_blocks(
+        np.lexsort,
+        dtype=int,
+        meta=np.array([], dtype=int),
+        drop_axis=0,
+    )
+    # 4. Reorder
+    nz_sorted = nz.T.map_blocks(
+        operator.getitem,
+        sort_indices,
+        dtype=int,
+        meta=np.array([[]], dtype=int),
+    ).T
+    return tuple(nz_sorted), sort_indices
+
+
+def _fast_dask_nonzero_chunk(
+    mask_chunk: np.ndarray, offset: tuple[int, ...]
+) -> np.ndarray:
+    nz_indices = np.stack(np.nonzero(mask_chunk))
+    return nz_indices + np.array(offset)[:, None]
+
+
+def _fast_dask_mask(a: Array, mask: Array, sort_indices: Array) -> Array:
+    """Variant of a[mask], which is much faster when the number of
+    True points in the mask is much smaller than the total.
+    Applying this function to multiple identically shaped **and chunked**
+    arrays with the same mask will return objects in the same order.
+    """
+    import dask
+    import dask.array as da
+
+    # 1. Apply a[mask] to each chunk independelty
+    f = dask.delayed(operator.getitem, pure=True)
+    delayeds = [
+        f(a_i, mask_i)
+        for a_i, mask_i in zip(
+            a.to_delayed().reshape(-1),
+            mask.to_delayed().reshape(-1),
+        )
+    ]
+    # 2. rechunk to a single chunk (needed by a[b], where a has shape=(nan, )
+    #    and b is an integer array
+    rechunked = dask.delayed(np.concatenate, pure=True)(delayeds)
+    # 3. Sort the results to match a[mask]
+    sorted = dask.delayed(operator.getitem, pure=True)(rechunked, sort_indices)
+    return da.from_delayed(
+        sorted,
+        shape=(math.nan,),
+        dtype=a.dtype,
+        meta=np.array([], dtype=a.dtype),
+    )
 
 
 def _build_dataframe(
