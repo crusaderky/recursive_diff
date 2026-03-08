@@ -9,8 +9,8 @@ v2.1.0 (unreleased)
   of text messages for all differences in numpy, pandas, and xarray objects
 - New function :func:`display_diffs` that displays differences
   in Jupyter notebooks
-- Fixed issue that would cause excessive RAM usage when comparing Dask arrays with
-  2+ dimensions using a distributed scheduler
+- Fixed issues that would cause slowdowns and excessive RAM usage when comparing Dask
+  arrays with 2+ dimensions using a distributed scheduler
 - Added support for P2P rechunk in Dask distributed
 
 
