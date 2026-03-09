@@ -597,30 +597,57 @@ def _fast_dask_nonzero(mask: Array) -> tuple[tuple[Array, ...], Array]:
     - matching array of shape (nan, ) which is to be used by _fast_dask_mask to reorder
       the output.
     """
-    import dask
-    import dask.array as da
+    from dask.base import tokenize
+    from dask.core import flatten
+    from dask.highlevelgraph import HighLevelGraph
+
+    try:
+        from dask.base import List, Task, TaskRef
+    except ImportError:
+        List = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+        Task = lambda _, f, *args: (f, *args)  # type: ignore[misc,assignment]  # noqa: E731
+        TaskRef = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
 
     # 1. Apply np.nonzero() to each chunk independently and add the
     # coordinates of the top-left corner of the chunk to the output
     chunk_offsets: list[list[int]] = [
         [0, *np.cumsum(c[:-1]).tolist()] for c in mask.chunks
     ]
-    f = dask.delayed(_fast_dask_nonzero_chunk, pure=True)
-    delayeds = [
-        f(chunk, chunk_offset)
-        for chunk, chunk_offset in zip(
-            mask.to_delayed().reshape(-1),
-            itertools.product(*chunk_offsets),
+
+    tok = tokenize(mask)
+    name1 = f"fast_nonzero-{tok}"
+    layer1 = {}
+    for i, (key, offset) in enumerate(
+        zip(flatten(mask.__dask_keys__()), itertools.product(*chunk_offsets))
+    ):
+        layer1[name1, 0, i] = Task(
+            (name1, 0, i), _fast_dask_nonzero_chunk, TaskRef(key), offset
         )
-    ]
-    # 2. rechunk to a single chunk (needed for sorting)
-    rechunked = dask.delayed(np.concatenate, pure=True)(delayeds, axis=1)
-    nz = da.from_delayed(
-        rechunked,
+    hlg1 = HighLevelGraph.from_collections(name1, layer1, dependencies=[mask])  # type: ignore[list-item]
+
+    # 2. Rechunk to a single chunk
+    name2 = f"fast_nonzero_rechunk-{tok}"
+    layer2 = {
+        (name2, 0, 0): Task(
+            (name2, 0, 0),
+            partial(np.concatenate, axis=1),
+            List([TaskRef(key) for key in layer1]),
+        )
+    }
+    hlg2 = HighLevelGraph(
+        {**hlg1.layers, name2: layer2},
+        {**hlg1.dependencies, name2: {name1}},
+    )
+
+    nz = Array(
+        dask=hlg2,
+        name=name2,
         shape=(mask.ndim, math.nan),
+        chunks=((mask.ndim,), (math.nan,)),
         dtype=int,
         meta=np.array([[]], dtype=int),
     )
+
     # 3. Get the order in which np.nonzero() would have returned the output
     sort_indices = nz[::-1, :].map_blocks(
         np.lexsort,
@@ -651,29 +678,53 @@ def _fast_dask_mask(a: Array, mask: Array, sort_indices: Array) -> Array:
     Applying this function to multiple identically shaped **and chunked**
     arrays with the same mask will return objects in the same order.
     """
-    import dask
-    import dask.array as da
+
+    from dask.base import tokenize
+    from dask.core import flatten
+    from dask.highlevelgraph import HighLevelGraph
+
+    try:
+        from dask.base import List, Task, TaskRef
+    except ImportError:
+        List = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+        Task = lambda _, f, *args: (f, *args)  # type: ignore[misc,assignment]  # noqa: E731
+        TaskRef = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
 
     # 1. Apply a[mask] to each chunk independelty
-    f = dask.delayed(operator.getitem, pure=True)
-    delayeds = [
-        f(a_i, mask_i)
-        for a_i, mask_i in zip(
-            a.to_delayed().reshape(-1),
-            mask.to_delayed().reshape(-1),
-        )
-    ]
-    # 2. rechunk to a single chunk (needed by a[b], where a has shape=(nan, )
-    #    and b is an integer array
-    rechunked = dask.delayed(np.concatenate, pure=True)(delayeds)
+    #    The reported shape and chunks are bogus here!
+    masked = a.map_blocks(operator.getitem, mask, dtype=a.dtype, meta=a._meta)  # type: ignore[arg-type]
+
+    # 2. rechunk to a single chunk
     # 3. Sort the results to match a[mask]
-    sorted = dask.delayed(operator.getitem, pure=True)(rechunked, sort_indices)
-    return da.from_delayed(
-        sorted,
+    tok = tokenize(masked)
+    name = f"fast_mask_merge-{tok}"
+    layer = {
+        (name, 0): Task(
+            (name, 0),
+            _fast_dask_mask_chunk,
+            List([TaskRef(key) for key in flatten(masked.__dask_keys__())]),
+            TaskRef(sort_indices.__dask_keys__()[0]),
+        )
+    }
+    hlg = HighLevelGraph.from_collections(
+        name,
+        layer,
+        dependencies=[masked, sort_indices],  # type: ignore[list-item]
+    )
+
+    return Array(
+        dask=hlg,
+        name=name,
         shape=(math.nan,),
+        chunks=((math.nan,),),
         dtype=a.dtype,
         meta=np.array([], dtype=a.dtype),
     )
+
+
+def _fast_dask_mask_chunk(chunks: list[np.ndarray], order: np.ndarray) -> np.ndarray:
+    masked = np.concatenate(chunks)
+    return masked[order]
 
 
 def _build_dataframe(
