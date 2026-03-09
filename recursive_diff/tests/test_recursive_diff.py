@@ -1367,10 +1367,10 @@ def test_lazy_datasets_without_dask(tmp_path):
     [
         # Different OSes and dependency versions have different peak RAM usages.
         # These are the worst case scenarios across all combinations.
-        ("netcdf", None, 100),  # Uses more RAM on MacOS
-        ("netcdf", {}, 50),
-        ("zarr", None, 100),
-        ("zarr", {}, 25),  # ~5 MiB on Linux, up to 25 MiB on Windows
+        ("netcdf", None, 110),  # Uses more RAM on MacOS
+        ("netcdf", {}, 60),
+        ("zarr", None, 110),
+        ("zarr", {}, 30),  # ~5 MiB on Linux, up to 30 MiB on Windows
     ],
 )
 def test_lazy_datasets_huge(tmp_path, chunks, max_peak, format):

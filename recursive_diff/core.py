@@ -6,7 +6,9 @@ See also its most commonly used wrapper:
 
 from __future__ import annotations
 
+import itertools
 import math
+import operator
 import re
 import typing
 from collections.abc import Callable, Collection, Generator, Hashable
@@ -422,10 +424,15 @@ def _diff_dataarrays(
     lhs, rhs = xarray.align(lhs, rhs, join="inner")
 
     is_dask = lhs.chunks is not None or rhs.chunks is not None
-    if is_dask and lhs.chunks is None:
-        lhs = lhs.chunk(dict(zip(rhs.dims, rhs.chunks)))  # type: ignore[arg-type]
-    elif is_dask and rhs.chunks is None:
-        rhs = rhs.chunk(dict(zip(lhs.dims, lhs.chunks)))  # type: ignore[arg-type]
+    if is_dask:
+        import dask.array as da
+
+        # Ensure that both lhs and rhs are Dask arrays and that they
+        # have aligned chunks
+        lhs_data, rhs_data = da.broadcast_arrays(lhs.data, rhs.data)
+        lhs = lhs.copy(deep=False, data=lhs_data)
+        rhs = rhs.copy(deep=False, data=rhs_data)
+        assert lhs.chunks == rhs.chunks
 
     # Generate a bit-mask of the differences
     # For Dask-backed arrays, this operation is delayed.
@@ -477,33 +484,37 @@ def _diff_dataarrays(
     #   non-brief dim, with potentially repeated indices
     # All of the arrays will have the same size, which is the number of differences.
     # For Dask-backed arrays, this whole operation is delayed.
+    diffs_idx: tuple[np.ndarray | Array, ...]
 
     if brief_axes:
         diffs_count = mask.astype(int).sum(axis=tuple(brief_axes))
         mask = diffs_count > 0
-        if mask.ndim:
-            diffs_count = diffs_count[mask]
-    else:
-        diffs_lhs = lhs.data[mask]
-        diffs_rhs = rhs.data[mask]
-
-    diffs_idx = []
-    for axis, size in enumerate(mask.shape):
-        idx_shape = (1,) * axis + (-1,) + (1,) * (mask.ndim - axis - 1)
-        if is_dask:
-            import dask.array as da
-
-            assert isinstance(mask, da.Array)
-            idx = da.arange(size, chunks=mask.chunks[axis])
-            idx = idx.reshape(idx_shape)
-            idx = da.broadcast_to(idx, mask.shape, chunks=mask.chunks)
+    if is_dask:
+        assert isinstance(mask, Array)
+        # a[mask] is very slow in Dask for 2+ dimensional arrays because it needs to
+        # preserve the order of the returned elements, so it involves rechunking. Under
+        # the assumption that the number of differences is << the number of total
+        # elements, filter each chunk independently and then full-sort the results by
+        # index.
+        diffs_idx, sort_indices = _fast_dask_nonzero(mask)
+        if brief_axes:
+            if mask.ndim:
+                diffs_count = _fast_dask_mask(diffs_count, mask, sort_indices)
         else:
-            idx = np.arange(size)
-            idx = idx.reshape(idx_shape)
-            idx = np.broadcast_to(idx, mask.shape)
-
-        idx = idx[mask]
-        diffs_idx.append(idx)
+            diffs_lhs = _fast_dask_mask(lhs.data, mask, sort_indices)
+            diffs_rhs = _fast_dask_mask(rhs.data, mask, sort_indices)
+    else:
+        assert isinstance(mask, (np.ndarray, np.generic))
+        if brief_axes:
+            if mask.ndim:
+                diffs_idx = np.nonzero(mask)
+                diffs_count = diffs_count[mask]
+            else:
+                diffs_idx = ()
+        else:
+            diffs_idx = np.nonzero(mask)
+            diffs_lhs = lhs.data[mask]
+            diffs_rhs = rhs.data[mask]
 
     msg_prefix = "".join(f"[{elem}]" for elem in path)
 
@@ -536,7 +547,7 @@ def _diff_dataarrays(
 
             rel_delta = da.map_blocks(_rel_delta, diffs_lhs, diffs_rhs, dtype=float)
         else:
-            rel_delta = _rel_delta(diffs_lhs, diffs_rhs)
+            rel_delta = _rel_delta(diffs_lhs, diffs_rhs)  # type: ignore[arg-type]
         args = (diffs_lhs, diffs_rhs, abs_delta, rel_delta, *diffs_coords)
         build_df = partial(
             _build_dataframe,
@@ -573,6 +584,147 @@ def _diff_dataarrays(
         )
     else:
         yield from pp_func(*args)
+
+
+def _fast_dask_nonzero(mask: Array) -> tuple[tuple[Array, ...], Array]:
+    """Variant of da.nonzero(mask), which is much faster when the number of
+    nonzero elements is much smaller than the total.
+
+    Returns:
+
+    - tuple of arrays of shape (nan, ), one array per axis, one point per nonzero
+      element, just like da.nonzero(mask)
+    - matching array of shape (nan, ) which is to be used by _fast_dask_mask to reorder
+      the output.
+    """
+    from dask.base import tokenize
+    from dask.core import flatten
+    from dask.highlevelgraph import HighLevelGraph
+
+    try:
+        from dask.base import List, Task, TaskRef
+    except ImportError:
+        List = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+        Task = lambda _, f, *args: (f, *args)  # type: ignore[misc,assignment]  # noqa: E731
+        TaskRef = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+
+    # 1. Apply np.nonzero() to each chunk independently and add the
+    # coordinates of the top-left corner of the chunk to the output
+    chunk_offsets: list[list[int]] = [
+        [0, *np.cumsum(c[:-1]).tolist()] for c in mask.chunks
+    ]
+
+    tok = tokenize(mask)
+    name1 = f"fast_nonzero-{tok}"
+    layer1 = {}
+    for i, (key, offset) in enumerate(
+        zip(flatten(mask.__dask_keys__()), itertools.product(*chunk_offsets))
+    ):
+        layer1[name1, 0, i] = Task(
+            (name1, 0, i), _fast_dask_nonzero_chunk, TaskRef(key), offset
+        )
+    hlg1 = HighLevelGraph.from_collections(name1, layer1, dependencies=[mask])  # type: ignore[list-item]
+
+    # 2. Rechunk to a single chunk
+    name2 = f"fast_nonzero_rechunk-{tok}"
+    layer2 = {
+        (name2, 0, 0): Task(
+            (name2, 0, 0),
+            partial(np.concatenate, axis=1),
+            List([TaskRef(key) for key in layer1]),
+        )
+    }
+    hlg2 = HighLevelGraph(
+        {**hlg1.layers, name2: layer2},
+        {**hlg1.dependencies, name2: {name1}},
+    )
+
+    nz = Array(
+        dask=hlg2,
+        name=name2,
+        shape=(mask.ndim, math.nan),
+        chunks=((mask.ndim,), (math.nan,)),
+        dtype=int,
+        meta=np.array([[]], dtype=int),
+    )
+
+    # 3. Get the order in which np.nonzero() would have returned the output
+    sort_indices = nz[::-1, :].map_blocks(
+        np.lexsort,
+        dtype=int,
+        meta=np.array([], dtype=int),
+        drop_axis=0,
+    )
+    # 4. Reorder
+    nz_sorted = nz.T.map_blocks(
+        operator.getitem,
+        sort_indices,
+        dtype=int,
+        meta=np.array([[]], dtype=int),
+    ).T
+    return tuple(nz_sorted), sort_indices
+
+
+def _fast_dask_nonzero_chunk(
+    mask_chunk: np.ndarray, offset: tuple[int, ...]
+) -> np.ndarray:
+    nz_indices = np.stack(np.nonzero(mask_chunk))
+    return nz_indices + np.array(offset)[:, None]
+
+
+def _fast_dask_mask(a: Array, mask: Array, sort_indices: Array) -> Array:
+    """Variant of a[mask], which is much faster when the number of
+    True points in the mask is much smaller than the total.
+    Applying this function to multiple identically shaped **and chunked**
+    arrays with the same mask will return objects in the same order.
+    """
+
+    from dask.base import tokenize
+    from dask.core import flatten
+    from dask.highlevelgraph import HighLevelGraph
+
+    try:
+        from dask.base import List, Task, TaskRef
+    except ImportError:
+        List = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+        Task = lambda _, f, *args: (f, *args)  # type: ignore[misc,assignment]  # noqa: E731
+        TaskRef = lambda x: x  # type: ignore[misc,assignment]  # noqa: E731
+
+    # 1. Apply a[mask] to each chunk independelty
+    #    The reported shape and chunks are bogus here!
+    masked = a.map_blocks(operator.getitem, mask, dtype=a.dtype, meta=a._meta)  # type: ignore[arg-type]
+
+    # 2. rechunk to a single chunk
+    # 3. Sort the results to match a[mask]
+    tok = tokenize(masked)
+    name = f"fast_mask_merge-{tok}"
+    layer = {
+        (name, 0): Task(
+            (name, 0),
+            _fast_dask_mask_chunk,
+            List([TaskRef(key) for key in flatten(masked.__dask_keys__())]),
+            TaskRef(sort_indices.__dask_keys__()[0]),
+        )
+    }
+    hlg = HighLevelGraph.from_collections(
+        name,
+        layer,
+        dependencies=[masked, sort_indices],  # type: ignore[list-item]
+    )
+
+    return Array(
+        dask=hlg,
+        name=name,
+        shape=(math.nan,),
+        chunks=((math.nan,),),
+        dtype=a.dtype,
+        meta=np.array([], dtype=a.dtype),
+    )
+
+
+def _fast_dask_mask_chunk(chunks: list[np.ndarray], order: np.ndarray) -> np.ndarray:
+    masked = np.concatenate(chunks)
+    return masked[order]
 
 
 def _build_dataframe(
