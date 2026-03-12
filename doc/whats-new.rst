@@ -3,6 +3,10 @@
 What's New
 ==========
 
+v2.2.0 (unreleased)
+-------------------
+
+
 v2.1.0 (2026-03-12)
 -------------------
 - New function :func:`diff_arrays` that returns dataframes of differences instead
