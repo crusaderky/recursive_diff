@@ -1,12 +1,12 @@
-# recursive_diff
+This demonstrates a regression in libnetcdf which breaks coverage.
 
-[![SPEC 0 — Minimum Supported Dependencies](https://img.shields.io/badge/SPEC-0-green?labelColor=%23004811&color=%235CA038)](https://scientific-python.org/specs/spec-0000/)
-[![doc-badge](https://github.com/crusaderky/recursive_diff/actions/workflows/docs.yml/badge.svg)](https://github.com/crusaderky/recursive_diff/actions)
-[![lint-badge](https://github.com/crusaderky/recursive_diff/actions/workflows/lint.yml/badge.svg)](https://github.com/crusaderky/recursive_diff/actions)
-[![wheels-badge](https://github.com/crusaderky/recursive_diff/actions/workflows/wheels.yml/badge.svg)](https://github.com/crusaderky/recursive_diff/actions)
-[![pytest-badge](https://github.com/crusaderky/recursive_diff/actions/workflows/pytest.yml/badge.svg)](https://github.com/crusaderky/recursive_diff/actions)
-[![codecov-badge](https://codecov.io/gh/crusaderky/recursive_diff/branch/main/graph/badge.svg)](https://codecov.io/gh/crusaderky/recursive_diff/branch/main)
+To run:
+```bash
+$ pixi run coverage
+[...]
+No source for code: '<[...]/recursive_diff>/src/netCDF4/_netCDF4.pyx'; see https://coverage.readthedocs.io/en/7.13.4/messages.html#error-no-source
+$ echo $?
+1
+```
 
-Recursively compare two Python data structures
-
-Full documentation at http://recursive-diff.readthedocs.io/
+To make the issue disappear, uncomment `# libnetcdf = "<4.10.0"` in pixi.toml.
